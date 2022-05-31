@@ -148,6 +148,10 @@
     sketchie.draw.addPostProcessingShader(shaderName);
   }
   
+  void autoSetShader(String imgName, String shadderName) {
+    sketchie.draw.autoSetShader(imgName, shadderName);
+  }
+  
   void runScript(String scriptName) {
     try {
       Desktop desktop = null;

@@ -45,7 +45,7 @@ class Render {
     this.sceneScaleY = (float)h/app.height;
     imgMap = new HashMap<String, SketchImage>();
     console = new Console();
-    missingImg = loadImage("data/engine/icos/missing.png");
+    missingImg = loadImage(PATH_MISSING_ICO);
     postProcessingShaders  = new ArrayList<PShader>();
     shaderNames = new IntDict();
     imgNames = new ArrayList<String>();
@@ -244,17 +244,17 @@ class Render {
   
   private void storeCache(SketchImage img, String name, int fileSize, String originalPath) {
     if (caching) {
-      File cachedImage = new File(sketchPath()+"/data/engine/cache/"+name+cacheFileType);
+      File cachedImage = new File(PATH_CACHE+name+cacheFileType);
       if (!cachedImage.exists()) {
         console.info("Cache for "+name+" created.");
-        img.getImg().save("/data/engine/cache/"+name+cacheFileType);
+        img.getImg().save(PATH_CACHE+name+cacheFileType);
         JSONObject properties = new JSONObject();
         properties.setString("path", originalPath);
         properties.setInt("width", (int)img.getWidth());
         properties.setInt("height", (int)img.getHeight());
         properties.setBoolean("mini", attribExists(name+":mini") || attribExists("ALL:mini"));
         properties.setInt("size", fileSize);
-        saveJSONObject(properties, "/data/engine/cache/"+name+".json");
+        saveJSONObject(properties, PATH_CACHE+name+".json");
       }
     }
   }
@@ -264,16 +264,16 @@ class Render {
       PImage cachedImg;
       float wid  = 0;
       float high = 0;
-      File cachedImage = new File(sketchPath()+"/data/engine/cache/"+name+cacheFileType);
+      File cachedImage = new File(PATH_CACHE+name+cacheFileType);
       if (cachedImage.exists()) {
-        cachedImg = loadImage("/data/engine/cache/"+name+cacheFileType);
+        cachedImg = loadImage(PATH_CACHE+name+cacheFileType);
         
-        File propertiesFile = new File(sketchPath()+"/data/engine/cache/"+name+".json");
+        File propertiesFile = new File(PATH_CACHE+name+".json");
         if (!propertiesFile.exists()) {
           console.info("Missing JSON. Cache will be re-created.");
           return null;
         }
-        JSONObject properties = loadJSONObject("/data/engine/cache/"+name+".json");
+        JSONObject properties = loadJSONObject(PATH_CACHE+name+".json");
         wid  = (float)properties.getInt("width");
         if (cacheFileType.equals(".tga")) {               //Because of a bug in processing, we need to flip images upside down if therethe file type the cached images are in is tga.
           high = -properties.getInt("height");
@@ -315,7 +315,7 @@ class Render {
       SketchImage img;
       img = imgMap.get(imgName);
       if (img == null) {
-        loadImg(sketchPath()+"/data/img/"+imgName+".png");
+        loadImg(PATH_IMG+imgName+".png");
         img = imgMap.get(imgName);
         if (img == null) {
           console.warnOnce("Could not find "+imgName+" in memory.");
@@ -385,6 +385,9 @@ class Render {
   }
   
   public void autoImgVertex(Sprite s) {
+    if (s.getName().equals("glow")) {
+      display.blendMode(ADD);
+    }
     drawPoint = QUAD;
     this.scaleMode = 2; 
     this.wi = s.getWidth();
@@ -395,6 +398,10 @@ class Render {
     float y = s.getY()+s.getHeight()*s.getBop();
     this.bitmapImg(this.getImg(s.getImg()), x, y);
     this.vertex = v;
+    
+    if (s.getName().equals("glow")) {
+      display.blendMode(NORMAL);
+    }
   }
   
   public void img(PImage p, float xpos, float ypos) {this.scaleMode = 0; this.bitmapImg(p,xpos,ypos);}
@@ -403,6 +410,9 @@ class Render {
   
   public void autoSetShader(String imgName, PShader shader) {
     this.getImg(imgName).setShader(shader);
+  }
+  public void autoSetShader(String imgName, String shaderName) {
+    this.getImg(imgName).setShader(this.getShaderByName(shaderName));
   }
   public PShader autoGetShader(String imgName) {
     return this.getImg(imgName).getShader();
@@ -454,7 +464,20 @@ class Render {
       }
   }
   
+  public void setAddMode() {
+    display.beginDraw();
+    display.blendMode(ADD);
+    display.endDraw();
+  }
+  
+  public void setNormalMode() {
+    display.beginDraw();
+    display.blendMode(NORMAL);
+    display.endDraw();
+  }
+  
   private void bitmapImg(SketchImage p, float xpos, float ypos) {
+    //setAddMode();
     display.beginDraw();
     //display.pushMatrix();
     //display.translate(xpos, ypos);
@@ -578,6 +601,8 @@ class Render {
       p.getShader().set("time", this.getFramecount() / this.getFramerate());
       display.resetShader();
     }
+    
+    //setNormalMode();
   }
   
   private int prevDrawPoint;
@@ -811,9 +836,9 @@ class Render {
   
   public void loadAllShaders() {
     if (!loadOnGoMode) {
-       File directory = new File(sketchPath()+"/data/shaders/");
+       File directory = new File(PATH_SHADER);
        if (!directory.exists()) {
-         console.error("\"shaders\" directory not found.");
+         console.error("\""+PATH_SHADER+"\" directory not found.");
        }
        for (File file : directory.listFiles()) {
          PShader s = loadShader(file.getAbsolutePath());
@@ -888,11 +913,7 @@ class Render {
           fn = "0"+str(recFrame);
         }
         recFrame++;
-        display.save("C:/My Data/Frames/"+fn+".png");
-      }
-      
-      if (recFrame == 200) {
-        exit();
+        display.save(FRAMES_FOLDER_DIR+fn+".tiff");
       }
     }
     //display.save("C:/My Data/Frames/"+str(this.framecount)+".tga");

@@ -286,7 +286,9 @@ class SketchieEngine {
   
   public void renderSprites() {
     for (Sprite s : sprites) {
+      draw.setAddMode();
       renderSprite(s);
+      draw.setNormalMode();
     }
   }
   
@@ -340,8 +342,7 @@ class SketchieEngine {
   }
   
   public void updateSpriteFromJSON(Sprite s) throws NullPointerException {
-      String path = "/data/engine/sprites/";
-      JSONObject att = loadJSONObject(path+s.getName()+".json");
+      JSONObject att = loadJSONObject(PATH_SPRITES_ATTRIB+s.getName()+".json");
       s.move(att.getInt("x"), att.getInt("y"));
       s.setWidth(att.getInt("w"));
       s.setHeight(att.getInt("h"));
@@ -527,7 +528,7 @@ class SketchieEngine {
     }
     this.syncMusic();
     this.generalClick.update();
-    this.runSpriteInteraction(); //<>//
+    this.runSpriteInteraction(); //<>// //<>//
     console.display(this.displayUI);
     if (console.basicui.displayingWindow()) {
       console.basicui.display();

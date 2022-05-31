@@ -11,6 +11,7 @@ float framecount = 0;
 boolean doneLoading = true;
 
 void settings() {
+  System.setProperty("jogl.disable.openglcore", "false");
   size(frameWidth, frameHeight, P2D);
 }
 SoundFile sndNope;
@@ -18,7 +19,7 @@ SoundFile sndNope;
 void setup() {
   loadingBar();
   app = this;
-  sndNope = new SoundFile(app, "/data/engine/sounds/nope.wav");
+  sndNope = new SoundFile(app, PATH_SND_NOPE);
   sketchie = new SketchieEngine(renderScale);
   if (fastRendering) {
     sketchie.draw.enableFastRendering();
@@ -57,7 +58,8 @@ void draw() {
     sketchie.draw.prepareLoadAllImages("data/engine/defaultimg/");
     ready();
     if (rec) {
-       File directory = new File("C:/My Data/Frames/");
+      String FRAMES_FOLDER_DIR = "C:/mydata/temp/frames/";
+       File directory = new File(FRAMES_FOLDER_DIR);
        if (!directory.exists()) {
          error("\"Frames\" directory not found.");
        }

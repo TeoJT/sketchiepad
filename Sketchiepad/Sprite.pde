@@ -422,7 +422,6 @@ class Sprite {
   }
   
   public void updateJSON() {
-      String path = "/data/engine/sprites/";
       JSONObject attributes = new JSONObject();
       
       attributes.setString("name", name);
@@ -440,7 +439,7 @@ class Sprite {
       
       //resetDefaults();
       
-      saveJSONObject(attributes, path+name+".json");
+      saveJSONObject(attributes, PATH_SPRITES_ATTRIB+name+".json");
   }
   
   public boolean isDragging() {

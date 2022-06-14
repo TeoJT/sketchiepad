@@ -16,6 +16,8 @@ void settings() {
 }
 SoundFile sndNope;
 
+
+
 void setup() {
   loadingBar();
   app = this;
@@ -58,10 +60,9 @@ void draw() {
     sketchie.draw.prepareLoadAllImages("data/engine/defaultimg/");
     ready();
     if (rec) {
-      String FRAMES_FOLDER_DIR = "C:/mydata/temp/frames/";
        File directory = new File(FRAMES_FOLDER_DIR);
        if (!directory.exists()) {
-         error("\"Frames\" directory not found.");
+         error("\"frames\" directory not found.");
        }
        else {
          for (File file : directory.listFiles()) {

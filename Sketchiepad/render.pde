@@ -41,6 +41,7 @@ class Render {
   private void ready(int w, int h) {
     this.display      = createGraphics(w, h, P3D);
     this.shaderCanvas = createGraphics(w, h, P2D);
+    this.shaderCanvas
     this.sceneScaleX = (float)w/app.width;
     this.sceneScaleY = (float)h/app.height;
     imgMap = new HashMap<String, SketchImage>();

@@ -41,6 +41,8 @@ public void settings() {
 }
 SoundFile sndNope;
 
+
+
 public void setup() {
   loadingBar();
   app = this;
@@ -71,6 +73,8 @@ public void setup() {
   if (rec) {
     record();
   }
+
+  amongus();
 }
 
 public void draw() {
@@ -83,10 +87,9 @@ public void draw() {
     sketchie.draw.prepareLoadAllImages("data/engine/defaultimg/");
     ready();
     if (rec) {
-      String FRAMES_FOLDER_DIR = "C:/mydata/temp/frames/";
        File directory = new File(FRAMES_FOLDER_DIR);
        if (!directory.exists()) {
-         error("\"Frames\" directory not found.");
+         error("\"frames\" directory not found.");
        }
        else {
          for (File file : directory.listFiles()) {
@@ -1917,7 +1920,7 @@ class QuadVertices {
 String PATH_CACHE                = sketchPath()+"/data/engine/cache/";
 String PATH_IMG                  = sketchPath()+"/data/img/";
 String PATH_SHADER               = sketchPath()+"/data/shaders/";
-String PATH_SPRITES_ATTRIB       = sketchPath()+"/data/engine/sprites/";
+String PATH_SPRITES_ATTRIB       = sketchPath()+"/data/sprites/";
 String FRAMES_FOLDER_DIR         = sketchPath()+"/data/frames/";
 
 
@@ -3028,6 +3031,11 @@ public void looper() {
   sprite("sigblack");
 }
 //*******************************************k
+
+
+public void amongus() {
+    log("AMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUS");
+}
   public float getScaleX() {
     return sketchie.draw.getScaleX();
   }

@@ -23,6 +23,7 @@ void setup() {
   app = this;
   sndNope = new SoundFile(app, PATH_SND_NOPE);
   sketchie = new SketchieEngine(renderScale);
+  dis = sketchie.draw.display;
   if (fastRendering) {
     sketchie.draw.enableFastRendering();
   }
@@ -56,8 +57,8 @@ void draw() {
   framecount = float(sketchie.draw.getFramecount());
   if (frameCount == 2) {
     loadingBar();
-    sketchie.draw.prepareLoadAllImages("data/img/");
-    sketchie.draw.prepareLoadAllImages("data/engine/defaultimg/");
+    sketchie.draw.prepareLoadAllImages(PATH_IMG);
+    sketchie.draw.prepareLoadAllImages(PATH_DEFAULTIMG);
     ready();
     if (rec) {
        File directory = new File(FRAMES_FOLDER_DIR);
@@ -78,7 +79,9 @@ void draw() {
     doneLoading = false;
   }
   else if (frameCount > 2) {
+    dis.beginDraw();
     looper();
+    dis.endDraw();
     sketchie.draw.loopRun();
   }
   sketchie.draw.display();

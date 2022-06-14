@@ -1,3 +1,6 @@
+  PGraphics dis;
+
+
   public float getScaleX() {
     return sketchie.draw.getScaleX();
   }

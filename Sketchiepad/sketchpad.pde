@@ -63,6 +63,9 @@ void looper() {
     float size = 4.;
     img("cloud", 1000-int(  (t-floor(t))*2000.  ), int(  height-400 ), int( size*500*noise(ii) ), int( size*300*noise(ii) ) );
   }
+
+  dis.fill(color(255,0,0));
+  dis.rect(20, 20, 100, 100);
   
   if (framecount > 300) {
     //exit();

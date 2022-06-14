@@ -11,7 +11,7 @@ class Render {
   private boolean fastMode = true;
   private int lowResBase = 256;
   private PImage missingImg;
-  private PGraphics display;
+  public PGraphics display;
   private PGraphics shaderCanvas;
   private ArrayList<PShader> postProcessingShaders;
   private ArrayList<PShader> shaders;
@@ -41,7 +41,6 @@ class Render {
   private void ready(int w, int h) {
     this.display      = createGraphics(w, h, P3D);
     this.shaderCanvas = createGraphics(w, h, P2D);
-    this.shaderCanvas
     this.sceneScaleX = (float)w/app.width;
     this.sceneScaleY = (float)h/app.height;
     imgMap = new HashMap<String, SketchImage>();
@@ -445,14 +444,6 @@ class Render {
     this.zpos = z;
   }
   
-  public void danceFloor() {
-    display.beginDraw();
-    display.noStroke();
-    display.fill(0, 100);
-    display.rect(0, this.height()-200, this.width(), 200);
-    display.endDraw();
-  }
-  
   private float fract(float x, float y) {
       if (x > y) {
         return y/x;
@@ -466,20 +457,15 @@ class Render {
   }
   
   public void setAddMode() {
-    display.beginDraw();
     display.blendMode(ADD);
-    display.endDraw();
   }
   
   public void setNormalMode() {
-    display.beginDraw();
     display.blendMode(NORMAL);
-    display.endDraw();
   }
   
   private void bitmapImg(SketchImage p, float xpos, float ypos) {
     //setAddMode();
-    display.beginDraw();
     //display.pushMatrix();
     //display.translate(xpos, ypos);
     //display.rotate(rot);
@@ -596,7 +582,6 @@ class Render {
     
     
     display.endShape();
-    display.endDraw();
     display.resetShader();
     if (p.hasShader()) {
       p.getShader().set("time", this.getFramecount() / this.getFramerate());
@@ -610,7 +595,6 @@ class Render {
   
   
   public void gradientHorizontal(int x, int y, float w, float h, color c1, color c2) {
-    display.beginDraw();
     display.noFill();
   
     for (int i = y; i <= y+h; i++) {
@@ -619,40 +603,33 @@ class Render {
       display.stroke(c);
       display.line(x, i, x+w, i);
     }
-    display.endDraw();
   }
   
   public void gradientVertical(int x, int y, float w, float h, color c1, color c2) {
-    display.beginDraw();
     for (int i = x; i <= x+w; i++) {
       float inter = map(i, x, x+w, 0, 1);
       color c = lerpColor(c1, c2, inter);
       display.stroke(c);
       display.line(i, y, i, y+h);
     }
-    display.endDraw();
   }
     
   public void txt(String t, float x, float y, float size) {
-    display.beginDraw();
     display.textAlign(LEFT, LEFT);
     display.textSize(size);
     display.fill(255);
     display.text(t, x, y);
-    display.endDraw();
   }
   
   private float flash;
   public void bootsAndCats() {
     if (flash > 0.0) {
-      display.beginDraw();
       display.blendMode(ADD);
       display.fill(this.flash);
       this.flash -= 5.0;
       display.noStroke();
       display.rect(0,0,display.width,display.height);
       display.blendMode(NORMAL);
-      display.endDraw();
     }
   }
   
@@ -667,7 +644,7 @@ class Render {
   
   public void prepareLoadAllImages(String dir) {
     if (!loadOnGoMode) {
-       File directory = new File(sketchPath()+"/"+dir);
+       File directory = new File(dir);
        if (!directory.exists()) {
          console.error(dir+" directory not found.");
        }

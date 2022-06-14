@@ -48,6 +48,7 @@ public void setup() {
   app = this;
   sndNope = new SoundFile(app, PATH_SND_NOPE);
   sketchie = new SketchieEngine(renderScale);
+  dis = sketchie.draw.display;
   if (fastRendering) {
     sketchie.draw.enableFastRendering();
   }
@@ -73,8 +74,6 @@ public void setup() {
   if (rec) {
     record();
   }
-
-  amongus();
 }
 
 public void draw() {
@@ -83,8 +82,8 @@ public void draw() {
   framecount = PApplet.parseFloat(sketchie.draw.getFramecount());
   if (frameCount == 2) {
     loadingBar();
-    sketchie.draw.prepareLoadAllImages("data/img/");
-    sketchie.draw.prepareLoadAllImages("data/engine/defaultimg/");
+    sketchie.draw.prepareLoadAllImages(PATH_IMG);
+    sketchie.draw.prepareLoadAllImages(PATH_DEFAULTIMG);
     ready();
     if (rec) {
        File directory = new File(FRAMES_FOLDER_DIR);
@@ -105,7 +104,9 @@ public void draw() {
     doneLoading = false;
   }
   else if (frameCount > 2) {
+    dis.beginDraw();
     looper();
+    dis.endDraw();
     sketchie.draw.loopRun();
   }
   sketchie.draw.display();
@@ -308,6 +309,7 @@ class Console {
   private boolean debugInfo = false;
   PFont consoleFont;
   public BasicUI basicui;
+  private boolean enableBasicUI = false;
   
   private class ConsoleLine {
     private int interval = 0;
@@ -321,6 +323,14 @@ class Console {
       this.message = "";
       this.pos = initialPos;
       basicui = new BasicUI();
+    }
+
+    public void enableUI() {
+      enableBasicUI = true;
+    }
+
+    public void disableUI() {
+      enableBasicUI = false;
     }
     
     public void move() {
@@ -478,7 +488,9 @@ class Console {
   }
   public void warn(String message) {
     this.consolePrint("WARNING!! "+message, color(255, 200, 30));
-    this.basicui.showWarningWindow(message);
+    if (enableBasicUI) {
+      this.basicui.showWarningWindow(message);
+    }
   }
   public void error(String message) {
     this.consolePrint("ERROR!! "+message, color(255, 30, 30));
@@ -498,7 +510,9 @@ class Console {
   public void warnOnce(String message) {
     if (this.timeout == 0) {
       this.consolePrint("WARNING!! "+message, color(255, 200, 30));
-      this.basicui.showWarningWindow(message);
+      if (enableBasicUI) {
+        this.basicui.showWarningWindow(message);
+      }
     }
     this.timeout = messageDelay;
   }
@@ -605,6 +619,7 @@ class SketchieEngine {
   private float beatTempo = 120;
   private float beatVol = 1.0f;
   private Sprite unusedSprite;
+  private KeyframeWindow keyframeWindow;
   
   public Console console;
   
@@ -625,6 +640,7 @@ class SketchieEngine {
   
   private void ready() {
     this.console = new Console();
+    this.keyframeWindow = new KeyframeWindow();
     draw.setConsole(console);
     unusedSprite = new Sprite("UNUSED", draw);
     spriteNames = new HashMap<String, Integer>();
@@ -633,6 +649,15 @@ class SketchieEngine {
     selectedSprites = new Stack<Sprite>();
     generalClick = new Click();
     draw.loadAllShaders();
+
+    //test 
+    keyframeWindow.newKeyframe(0);
+    keyframeWindow.newKeyframe(80);
+    keyframeWindow.newKeyframe(100);
+    keyframeWindow.newKeyframe(150);
+    keyframeWindow.newKeyframe(200);
+    keyframeWindow.newKeyframe(300);
+    keyframeWindow.newKeyframe(310);
   }
   
   private String cutChar(String str, int index) {
@@ -743,6 +768,7 @@ class SketchieEngine {
     this.displayUI = true;
   }
   private boolean draggingSquare = false;
+  private boolean showKeyframes = false;
   
   private boolean keyPressAllowed = true;
   private void keyPress() {
@@ -750,7 +776,7 @@ class SketchieEngine {
       if (keyPressed && !buttonDown) {
         buttonDown = true;
         if (key == 'q') {
-          
+          keyframeWindow.toggleVisible();
         }
         if (keyCode == LEFT) {
           console.log("Frame (before seek): "+draw.framecount);
@@ -1104,8 +1130,9 @@ class SketchieEngine {
     }
     this.syncMusic();
     this.generalClick.update();
-    this.runSpriteInteraction(); //<>// //<>//
+    this.runSpriteInteraction();
     console.display(this.displayUI);
+    this.keyframeWindow.run(draw.framecount);
     if (console.basicui.displayingWindow()) {
       console.basicui.display();
       playing = false;
@@ -1118,8 +1145,1202 @@ class SketchieEngine {
           music.unmute();
       }
     }
+    
   }
 }
+
+
+class KeyframeWindow {
+    boolean interactable = true;
+    boolean visible = false;
+    Keyframe currentKeyframe;
+    Keyframe startKeyframe = null;
+    final float wi = 100.f;
+    Console console;
+
+    public KeyframeWindow(Console c) {
+        this.console = c;
+    }
+
+    public void showKeyframeWindow() {
+        visible = true;
+    }
+
+    public void hideKeyframeWindow() {
+        visible = false;
+    }
+
+    public void toggleVisible() {
+        visible = !visible;
+    }
+
+    public void run(int frame) {
+        Keyframe k = startKeyframe;
+        float fpxl = (width/this.wi);
+        if (visible) {
+            stroke(sin(frameCount*0.1f)*127+127);
+            strokeWeight(1);
+            line(width/2, 0, width/2, height);
+        }
+        while (k != null) {
+
+            if (frame == k.getFrame()) {
+                fill(color(255, 255, 255, 200));
+            }
+            else {
+                fill(color(0, 255, 0, 200));
+            }
+
+            if (visible) {
+                //Translate the position.
+                float pos = fpxl*PApplet.parseFloat(k.getFrame()-frame)+width/2.f;
+
+                float p = pos-10;
+                float w = 20;
+                
+                noStroke();
+                rect(p, height/2, w, w);
+
+            }
+            
+            
+            k = k.getNextKeyframe();
+        }
+    }
+
+    public void newKeyframe(int f) {
+        Keyframe k = new Keyframe(f);
+        if (startKeyframe == null) {
+            currentKeyframe = k;
+            startKeyframe   = k;
+            return;
+        }
+        currentKeyframe.append(k);
+        currentKeyframe = k;
+    }
+
+
+}
+
+class Keyframe {
+    private int frame = 0;
+    private Keyframe nextKeyframe;
+
+
+    public Keyframe(int frame) {
+        this.frame = frame;
+    }
+
+    public Keyframe getNextKeyframe() {
+        return nextKeyframe;
+    }
+
+    public void append(Keyframe k) {
+        nextKeyframe = k;
+    }
+
+    public int getFrame() {
+        return frame;
+    }
+
+}
+
+String PATH_CACHE                = sketchPath()+"/data/engine/cache/";
+String PATH_IMG                  = sketchPath()+"/data/img/";
+String PATH_SHADER               = sketchPath()+"/data/shaders/";
+String PATH_SPRITES_ATTRIB       = sketchPath()+"/data/sprites/";
+String FRAMES_FOLDER_DIR         = sketchPath()+"/data/frames/";
+String PATH_DEFAULTIMG           = sketchPath()+"/data/engine/defaultimg/";
+
+
+String PATH_MISSING_ICO               = sketchPath()+"/data/engine/icos/missing.png";
+String PATH_SND_NOPE                  = sketchPath()+"/data/engine/sounds/nope.wav";
+class Render {
+  private float rot = 0;
+  private int drawPoint = CORNER;
+  private HashMap<String, SketchImage> imgMap;
+  public  ArrayList<String> imgNames;
+  private float wi, hi;
+  private float wiPix, hiPix;
+  private int scaleMode = 0;
+  private boolean loadOnGoMode = false;
+  private boolean caching = true;
+  private boolean fastMode = true;
+  private int lowResBase = 256;
+  private PImage missingImg;
+  public PGraphics display;
+  private PGraphics shaderCanvas;
+  private ArrayList<PShader> postProcessingShaders;
+  private ArrayList<PShader> shaders;
+  private IntDict shaderNames;
+  private Integer framecount = 0;
+  private Float framerate  = 60.0f;
+  private QuadVertices vertex;
+  private float sceneScaleX, sceneScaleY;
+  private Console console;
+  private boolean wireframe = false;
+  private boolean looperHasRun = false;
+  private float radius;
+  
+  public Render(int w, int h) {
+    ready(w, h);
+  }
+  
+  public Render(int w) {
+    float aspect = (float)w/width;
+    this.ready(w, PApplet.parseInt(height*aspect));
+  }
+  
+  public Render(float scale) {
+    this.ready(PApplet.parseInt(width*scale), PApplet.parseInt(height*scale));
+  }
+  
+  private void ready(int w, int h) {
+    this.display      = createGraphics(w, h, P3D);
+    this.shaderCanvas = createGraphics(w, h, P2D);
+    this.sceneScaleX = (float)w/app.width;
+    this.sceneScaleY = (float)h/app.height;
+    imgMap = new HashMap<String, SketchImage>();
+    console = new Console();
+    missingImg = loadImage(PATH_MISSING_ICO);
+    postProcessingShaders  = new ArrayList<PShader>();
+    shaderNames = new IntDict();
+    imgNames = new ArrayList<String>();
+    shaders = new ArrayList<PShader>();
+  }
+  
+  private void setConsole(Console console) {
+    this.console = console;
+  }
+  public float getScaleX() {
+    return sceneScaleX;
+  }
+  public float getScaleY() {
+    return sceneScaleY;
+  }
+  
+  public void loopRun() {
+    looperHasRun = true;
+  }
+  
+  
+  
+  
+  public int width() {
+    return display.width;
+  }
+
+  public int height() {
+    return display.height;
+  }
+  
+  public Float getFramerate() {
+    return this.framerate;
+  }
+  
+  public void changeFramecount(int amount) {
+    this.framecount += amount;
+    if (this.framecount < 0) {
+      this.framecount = 0;
+    }
+  }
+  
+  public void setFramecount(int amount) {
+    this.framecount = amount;
+    if (this.framecount < 0) {
+      this.framecount = 0;
+    }
+  }
+  
+  
+  public Integer getFramecount() {
+    return this.framecount;
+  }
+  
+  public void showWireframe() {
+    wireframe = true;
+  }
+  
+  public void hideWireframe() {
+    wireframe = false;
+  }
+  
+  public void setFramerate(float framerate) {
+    this.framerate = framerate;
+    frameRate(framerate);
+  }
+  
+  public void enableFastRendering() {
+    fastMode = true;
+    if (caching) {
+      console.log("Fast mode enabled");
+    }
+    else {
+      console.warn("Fast mode enabled but caching disabled.");
+    }
+  }
+  public void disableFastRendering() {
+    fastMode = false;
+  }
+  
+  public void loadOnGo() {
+    loadOnGoMode = true;
+    console.log("Sketch will load assets on the go.");
+  }
+  
+  public boolean attribExists(String attrib) {
+    
+    for (String a : imgAttributes) {
+      if (a.equals(attrib)) {
+        return true;
+      }
+    }
+    return false;
+  }
+ 
+  private String cacheFileType = ".png";
+  
+  public void loadImg(String imgPath) {
+    console.info(imgPath);
+    File f = new File(imgPath);
+    String n = f.getName();
+    String ext = "";
+    {
+      try {
+        ext = n.substring(n.length()-4, n.length());
+      }
+      catch (StringIndexOutOfBoundsException e) {
+        console.warn("The file type (\"\") is not an image.");
+        imgMap.put(n, new SketchImage(missingImg));
+        return;
+      }
+      if (!(ext.equals(".png") || ext.equals(".gif") || ext.equals(".jpg") || ext.equals(".tif"))) {
+        console.warn("The file type for "+n+" ("+ext+") is not an image.");
+        imgMap.put(n, new SketchImage(missingImg));
+        return;
+      }
+    }
+    int fileSize = (int)f.length();
+    n = n.substring(0, n.length()-4);
+    SketchImage img;
+    if (!f.exists()) {
+      console.warn("File "+imgPath+" not found.");
+      imgMap.put(n, new SketchImage(missingImg));
+      return;
+    }
+    if (caching && fastMode) {
+      SketchImage lowResImage = tryGetCache(n);
+      //If cache doesn't exist...
+      if (lowResImage == null) {
+        PImage I = loadImage(imgPath);
+        if (I.width <= 0 || I.height <= 0) {
+          console.warn("A problem with "+imgPath+" occured and could not be loaded.");
+          imgMap.put(n, new SketchImage(missingImg));
+          return;
+        }
+        
+        int originWid = I.width;
+        int originHi  = I.height;
+        if (attribExists(n+":mini") || attribExists("ALL:mini")) {
+          I = minimiseImg(I);
+        }
+        
+        PGraphics lowRes;
+        if ((originWid > lowResBase) && (originHi > lowResBase)) {
+          int wid;
+          int high;
+          float aspect = PApplet.parseFloat(I.width)/PApplet.parseFloat(I.height);
+          if (I.height >= I.width) {
+            wid  = PApplet.parseInt(PApplet.parseFloat(lowResBase)*aspect);
+            high = lowResBase;
+          }
+          else {
+            wid  = lowResBase;
+            high = PApplet.parseInt(lowResBase/aspect);
+          }
+          lowRes = createGraphics(wid, high);
+          lowRes.beginDraw();
+          lowRes.clear();
+          lowRes.image(I, 0, 0, wid, high);
+          lowRes.endDraw();
+          img = new SketchImage(lowRes, I.width, I.height);
+          imgMap.put(n, img);
+          imgNames.add(n);
+          storeCache(img, n, fileSize, f.getAbsolutePath());
+        }
+        else {
+          img = new SketchImage(I);
+          imgMap.put(n, img);
+          imgNames.add(n);
+        }
+      }
+      else {
+        img = lowResImage;
+        imgMap.put(n, img);
+        imgNames.add(n);
+      }
+    }
+    else {
+      PImage I = loadImage(imgPath);
+      
+      if (I.width <= 0 || I.height <= 0) {
+        console.warn("A problem with "+imgPath+" occured and could not be loaded.");
+        imgMap.put(n, new SketchImage(missingImg));
+        return;
+      }
+      
+      if (attribExists(n+":mini") || attribExists("ALL:mini")) {
+        I = minimiseImg(I);
+      }
+      
+      img = new SketchImage(I);
+      imgMap.put(n, img);
+      imgNames.add(n);
+    }
+  }
+  
+  private void storeCache(SketchImage img, String name, int fileSize, String originalPath) {
+    if (caching) {
+      File cachedImage = new File(PATH_CACHE+name+cacheFileType);
+      if (!cachedImage.exists()) {
+        console.info("Cache for "+name+" created.");
+        img.getImg().save(PATH_CACHE+name+cacheFileType);
+        JSONObject properties = new JSONObject();
+        properties.setString("path", originalPath);
+        properties.setInt("width", (int)img.getWidth());
+        properties.setInt("height", (int)img.getHeight());
+        properties.setBoolean("mini", attribExists(name+":mini") || attribExists("ALL:mini"));
+        properties.setInt("size", fileSize);
+        saveJSONObject(properties, PATH_CACHE+name+".json");
+      }
+    }
+  }
+  
+  private SketchImage tryGetCache(String name) {
+    if (caching) {
+      PImage cachedImg;
+      float wid  = 0;
+      float high = 0;
+      File cachedImage = new File(PATH_CACHE+name+cacheFileType);
+      if (cachedImage.exists()) {
+        cachedImg = loadImage(PATH_CACHE+name+cacheFileType);
+        
+        File propertiesFile = new File(PATH_CACHE+name+".json");
+        if (!propertiesFile.exists()) {
+          console.info("Missing JSON. Cache will be re-created.");
+          return null;
+        }
+        JSONObject properties = loadJSONObject(PATH_CACHE+name+".json");
+        wid  = (float)properties.getInt("width");
+        if (cacheFileType.equals(".tga")) {               //Because of a bug in processing, we need to flip images upside down if therethe file type the cached images are in is tga.
+          high = -properties.getInt("height");
+        }
+        else {
+          high = properties.getInt("height");
+        }
+        
+        //Return null so we can apply new attributes.
+        if (properties.getBoolean("mini") != (attribExists(name+":mini") || attribExists("ALL:mini"))) {
+          console.info("Mini attribute changed. Cache will be re-created.");
+          return null;
+        }
+        
+        String path = properties.getString("path");
+        
+        int s = (int)(new File(path)).length();
+        if (properties.getInt("size") != s) {
+          console.info(name+" is different ("+str(properties.getInt("size"))+", "+str(s)+") Cache will be re-created.");
+          return null;
+        }
+        
+      }
+      else {
+        console.info("No cache for "+name+" found.");
+        return null;
+      }
+      console.info("Loaded cache: "+name);
+      return new SketchImage(cachedImg, wid, high);
+    }
+    else {
+      console.info("Caching disabled, no cache for "+name+" loaded.");
+      return null;
+    }
+  }
+  
+  public SketchImage getImg(String imgName) {
+    if (loadOnGoMode) {
+      SketchImage img;
+      img = imgMap.get(imgName);
+      if (img == null) {
+        loadImg(PATH_IMG+imgName+".png");
+        img = imgMap.get(imgName);
+        if (img == null) {
+          console.warnOnce("Could not find "+imgName+" in memory.");
+          return new SketchImage(missingImg);
+        }
+      }
+      return img;
+    }
+    else {
+      SketchImage img;
+      img = imgMap.get(imgName);
+      if (img == null) {
+        console.warnOnce("Could not find "+imgName+" in memory.");
+        return new SketchImage(missingImg);
+      }
+      return img;
+    }
+  }
+  
+  public PImage get(String imgName) {
+    SketchImage img;
+    img = imgMap.get(imgName);
+    if (img == null) {
+      console.warnOnce("Could not find "+imgName+" in memory.");
+      return missingImg;
+    }
+    return img.getImg();
+  }
+  
+  public void minimiseImg(String imgName) {
+    SketchImage img = getImg(imgName);
+    int[] d = minimise(img.getImg());
+    img.setImg(img.getImg().get(d[0], d[1], d[2]-d[0], d[3]-d[1]));
+    img.setWi(d[2]-d[0]);
+    img.setHi(d[3]-d[1]);
+  }
+  public PImage minimiseImg(PImage img) {
+    int[] d = minimise(img);
+    return (img.get(d[0], d[1], d[2]-d[0], d[3]-d[1]));
+  }
+  
+  public void autoImg(String imgName, float xpos, float ypos) {this.scaleMode = 0; this.bitmapImg(this.getImg(imgName), xpos, ypos);}
+  public void autoImg(String imgName, float xpos, float ypos, int w, int h) {drawPoint = CORNER; this.scaleMode = 1; this.wiPix = (float)w; this.hiPix = (float)h; this.bitmapImg(this.getImg(imgName), xpos, ypos);}
+  public void autoImg(String imgName, float xpos, float ypos, float w, float h) {this.scaleMode = 2; this.wi = w; this.hi = h; this.bitmapImg(this.getImg(imgName), xpos, ypos);}
+  
+  public void autoImg(Sprite s, float xpos, float ypos, float w, float h) {
+    drawPoint = CORNER;
+    this.scaleMode = 2; 
+    this.wi = w; 
+    this.hi = h;
+    QuadVertices v = this.vertex;
+    this.vertex = s.vertex;
+    this.bitmapImg(this.getImg(s.getImg()), xpos, ypos);
+    this.vertex = v;
+  }
+  
+  public void autoImgRotate(Sprite s) {
+    drawPoint = ROUND; 
+    rot = s.getRot();
+    radius = s.getRadius();
+    this.scaleMode = 2; 
+    this.wi = s.getWidth();
+    this.hi = s.getHeight()-PApplet.parseInt((float)s.getHeight()*s.getBop());
+    float x = s.getX();
+    float y = s.getY()+s.getHeight()*s.getBop();
+    this.bitmapImg(this.getImg(s.getImg()), x, y);
+  }
+  
+  public void autoImgVertex(Sprite s) {
+    if (s.getName().equals("glow")) {
+      display.blendMode(ADD);
+    }
+    drawPoint = QUAD;
+    this.scaleMode = 2; 
+    this.wi = s.getWidth();
+    this.hi = s.getHeight()-PApplet.parseInt((float)s.getHeight()*s.getBop());
+    QuadVertices v = this.vertex;
+    this.vertex = s.vertex;
+    float x = s.getX();
+    float y = s.getY()+s.getHeight()*s.getBop();
+    this.bitmapImg(this.getImg(s.getImg()), x, y);
+    this.vertex = v;
+    
+    if (s.getName().equals("glow")) {
+      display.blendMode(NORMAL);
+    }
+  }
+  
+  public void img(PImage p, float xpos, float ypos) {this.scaleMode = 0; this.bitmapImg(p,xpos,ypos);}
+  public void img(PImage p, float xpos, float ypos, int w, int h) {this.scaleMode = 1; this.wiPix = (float)w; this.hiPix = (float)h; this.bitmapImg(p,xpos,ypos);}
+  public void img(PImage p, float xpos, float ypos,  float w, float h) {this.scaleMode = 2; this.wi = w; this.hi = h; this.bitmapImg(p,xpos,ypos);}
+  
+  public void autoSetShader(String imgName, PShader shader) {
+    this.getImg(imgName).setShader(shader);
+  }
+  public void autoSetShader(String imgName, String shaderName) {
+    this.getImg(imgName).setShader(this.getShaderByName(shaderName));
+  }
+  public PShader autoGetShader(String imgName) {
+    return this.getImg(imgName).getShader();
+  }
+  
+  public void rotation(float deg) {
+    rot = radians(deg);
+  }
+  
+  public void drawFrom(int mode) {
+    drawPoint = mode;
+  }
+  
+  private void bitmapImg(PImage p, float xpos, float ypos) {
+    this.bitmapImg(new SketchImage(p, p.width, p.height), xpos, ypos);
+  }
+  
+  public void tint(int col) {
+    display.tint(col);
+  }
+  
+  public void noTint() {
+    display.noTint();
+  }
+  
+  private float zpos = 1.0f;
+  
+  public void zPosition(float z) {
+    this.zpos = z;
+  }
+  
+  private float fract(float x, float y) {
+      if (x > y) {
+        return y/x;
+      }
+      else if (y > x) {
+        return x/y;
+      }
+      else {
+        return 1;
+      }
+  }
+  
+  public void setAddMode() {
+    display.blendMode(ADD);
+  }
+  
+  public void setNormalMode() {
+    display.blendMode(NORMAL);
+  }
+  
+  private void bitmapImg(SketchImage p, float xpos, float ypos) {
+    //setAddMode();
+    //display.pushMatrix();
+    //display.translate(xpos, ypos);
+    //display.rotate(rot);
+    
+    xpos *= this.sceneScaleX;
+    ypos *= this.sceneScaleY;
+    
+    if (p.hasShader()) {
+      display.shader(p.getShader());
+    }
+    
+    float w = 0.0f, h = 0.0f;
+    
+    switch (this.scaleMode) {
+      case 0:
+      w = (p.getWidth()) * this.sceneScaleX;
+      h = (p.getHeight()) * this.sceneScaleY;
+      break;
+      case 1:
+      w = (this.wiPix);
+      h = (this.hiPix);
+      break;
+      case 2:
+      w = p.getWidth() * this.wi * this.sceneScaleX;
+      h = p.getHeight() * this.hi * this.sceneScaleX;
+      break;
+    }
+    
+    if (this.wireframe) {
+      display.stroke(sin(frameCount*0.1f)*127+127, 100);
+      display.strokeWeight(2);
+    }
+    else {
+      display.noStroke();
+    }
+    display.beginShape();
+    display.texture(p.getImg());
+    
+    float startX = 0.0f, startY = 0.0f;
+    float endX = 0.0f,   endY = 0.0f  ;
+    
+    switch (drawPoint) {
+      case CENTER:
+        startX = -w/2; startY = -h/2;
+        endX   = startX+w; endY   = startY+h;
+      break;
+      case CORNER:
+        startX = xpos;     startY = ypos;
+        endX   = startX+w; endY   = startY+(h);
+      break;
+      case ROUND:
+        startX = xpos;     startY = ypos;
+        endX   = startX+w; endY   = startY+(h);
+      break;
+    }
+    
+    
+    
+    if (drawPoint == QUAD) {
+      this.display.vertex(vertex.v[0].x, vertex.v[0].y, this.zpos, 0, 0);
+      this.display.vertex(vertex.v[1].x, vertex.v[1].y, this.zpos, p.getTrueWidth(), 0);
+      this.display.vertex(vertex.v[2].x, vertex.v[2].y, this.zpos, p.getTrueWidth(), p.getTrueHeight());
+      this.display.vertex(vertex.v[3].x, vertex.v[3].y, this.zpos, 0, p.getTrueHeight());
+      this.display.vertex(vertex.v[0].x, vertex.v[0].y, this.zpos, 0, 0);
+      drawPoint = prevDrawPoint;
+    }
+    else if (drawPoint == ROUND) {
+      float r = HALF_PI/2 + rot;
+      float xr = radius;
+      float yr = radius;
+      float xd = startX+wi/2;
+      float yd = startY+hi/2;
+      float f = atan(wi/hi);
+      float x = sin(r+f)*xr + xd;
+      float y = cos(r+f)*yr + yd;
+      this.display.vertex(x, y, this.zpos, p.getTrueWidth(), 0);
+      x = sin(r-f+HALF_PI)*xr + xd;
+      y = cos(r-f+HALF_PI)*yr + yd;
+      this.display.vertex(x, y, this.zpos, 0, 0);
+      x = sin(r+f+PI)*xr + xd;
+      y = cos(r+f+PI)*yr + yd;
+      this.display.vertex(x, y, this.zpos, 0, p.getTrueHeight());
+      x = sin(r-f+HALF_PI+PI)*xr + xd;
+      y = cos(r-f+HALF_PI+PI)*yr + yd;
+      this.display.vertex(x, y, this.zpos, p.getTrueWidth(), p.getTrueHeight());
+      x = sin(r+f)*xr + xd;
+      y = cos(r+f)*yr + yd;
+      this.display.vertex(x, y, this.zpos, p.getTrueWidth(), 0);
+      
+      
+      //float x = sin(r)*xr + xd;
+      //float y = cos(r)*yr + yd;
+      //this.display.vertex(x, y, this.zpos, 0, 0);
+      //x = sin(r-HALF_PI)*xr + xd;
+      //y = cos(r-HALF_PI)*yr + yd;
+      //this.display.vertex(x, y, this.zpos, p.getTrueWidth(), 0);
+      //x = sin(r-PI)*xr + xd;
+      //y = cos(r-PI)*yr + yd;
+      //this.display.vertex(x, y, this.zpos, p.getTrueWidth(), p.getTrueHeight());
+      //x = sin(r-HALF_PI-PI)*xr + xd;
+      //y = cos(r-HALF_PI-PI)*yr + yd;
+      //this.display.vertex(x, y, this.zpos, 0, p.getTrueHeight());
+      //x = sin(r-TWO_PI)*xr + xd;
+      //y = cos(r-TWO_PI)*yr + yd;
+      //this.display.vertex(x, y, this.zpos, 0, 0);
+    }
+    else {
+      this.display.vertex(startX, startY, this.zpos, 0, 0);
+      this.display.vertex(endX, startY,   this.zpos, p.getTrueWidth(), 0);
+      this.display.vertex(endX, endY,     this.zpos, p.getTrueWidth(), p.getTrueHeight());
+      this.display.vertex(startX, endY,   this.zpos, 0, p.getTrueHeight());
+      this.display.vertex(startX, startY, this.zpos, 0, 0);
+    }
+    
+    
+    display.endShape();
+    display.resetShader();
+    if (p.hasShader()) {
+      p.getShader().set("time", this.getFramecount() / this.getFramerate());
+      display.resetShader();
+    }
+    
+    //setNormalMode();
+  }
+  
+  private int prevDrawPoint;
+  
+  
+  public void gradientHorizontal(int x, int y, float w, float h, int c1, int c2) {
+    display.noFill();
+  
+    for (int i = y; i <= y+h; i++) {
+      float inter = map(i, y, y+h, 0, 1);
+      int c = lerpColor(c1, c2, inter);
+      display.stroke(c);
+      display.line(x, i, x+w, i);
+    }
+  }
+  
+  public void gradientVertical(int x, int y, float w, float h, int c1, int c2) {
+    for (int i = x; i <= x+w; i++) {
+      float inter = map(i, x, x+w, 0, 1);
+      int c = lerpColor(c1, c2, inter);
+      display.stroke(c);
+      display.line(i, y, i, y+h);
+    }
+  }
+    
+  public void txt(String t, float x, float y, float size) {
+    display.textAlign(LEFT, LEFT);
+    display.textSize(size);
+    display.fill(255);
+    display.text(t, x, y);
+  }
+  
+  private float flash;
+  public void bootsAndCats() {
+    if (flash > 0.0f) {
+      display.blendMode(ADD);
+      display.fill(this.flash);
+      this.flash -= 5.0f;
+      display.noStroke();
+      display.rect(0,0,display.width,display.height);
+      display.blendMode(NORMAL);
+    }
+  }
+  
+  public void pump(float flash) {
+    this.flash = flash;
+  }
+  
+
+  
+  private ArrayList<File> allImages = new ArrayList<File>();
+  private int loadImageIndex = 0;
+  
+  public void prepareLoadAllImages(String dir) {
+    if (!loadOnGoMode) {
+       File directory = new File(dir);
+       if (!directory.exists()) {
+         console.error(dir+" directory not found.");
+       }
+       File[] imgs = directory.listFiles();
+       
+       for (File f : imgs) {
+         allImages.add(f);
+         if (f.isDirectory()) {
+           prepareLoadAllImages(dir+f.getName()+"/");
+         }
+       }
+       
+       
+    }
+  }
+  
+  public boolean loading() {
+    if (loadImageIndex >= allImages.size()) {
+      return false;
+    }
+    File f = allImages.get(loadImageIndex++);
+    this.loadImg(f.getAbsolutePath());
+    return true;
+  }
+  
+  public float loadPercentage() {
+    return (PApplet.parseFloat(loadImageIndex)/PApplet.parseFloat(allImages.size()));
+  }
+  
+  
+  private int minimiseThreshold = 10;
+  private int minimise(PImage p)[] {
+    p.loadPixels();
+    
+    int dimensions[] = {0, 0, 0, 0};
+    
+    //From left
+    for (int x = 0; x < p.width; x++) {
+      for (int y = 0; y < p.height; y++) {
+        if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) {
+          dimensions[0] = x;
+          
+          //End the loops by force setting the conditions to be false.
+          x = p.width;
+          y = p.height;
+        }
+      }
+    }
+    
+    //From top
+    for (int y = 0; y < p.height; y++) {
+      for (int x = 0; x < p.width; x++) {
+        if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) {
+          dimensions[1] = y;
+          
+          //End the loops by force setting the conditions to be false.
+          x = p.width;
+          y = p.height;
+        }
+      }
+    }
+    
+    //From right
+    for (int x = p.width-1; x > 0; x--) {
+      for (int y = 0; y < p.height; y++) {
+        if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) {
+          dimensions[2] = x;
+          //End the loops by force setting the conditions to be false.
+          x = 0;
+          y = p.height;
+        }
+      }
+    }
+    
+    //From bottom
+    for (int y = p.height-1; y > 0; y--) {
+      for (int x = 0; x < p.width; x++) {
+        if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) {
+          dimensions[3] = y;
+          
+          //End the loops by force setting the conditions to be false.
+          x = p.width;
+          y = 0;
+          
+        }
+      }
+    }
+    
+    return dimensions;
+  }
+  
+  /*
+  private int minimise(PImage p)[] {
+    p.loadPixels();
+    
+    if (((p.pixels[(p.width)*(p.height/2)+p.width/2] >> 24) & 0x000000FF) > minimiseThreshold) 
+    {
+      return minimise(p, p.width/2, p.height/2);
+    }
+    else {
+      for (int y = 0; y < p.height; y++) {
+        for (int x = 0; x < p.width; x++) {
+          if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) 
+          {
+            return minimise(p, x, y);
+          }
+        }
+      }
+    }
+    int[] empty = {0, 0, 0, 0};
+    return empty;
+    
+  }
+  
+  private int minimiseThreshold = 127;
+  private int minimise(PImage p, int x, int y)[] {
+    int dimensions[] = new int[4];
+    dimensions[0] = -1;
+    dimensions[1] = -1;
+    dimensions[2] = -1;
+    dimensions[3] = -1;
+    if (x-1 >= 0) {
+      if (((p.pixels[y*p.height+x-1] >> 24) & 0x000000FF) > minimiseThreshold) {
+        p.pixels[y*p.height+x] = 0;
+        dimensions[0] = minimise(p, x-1, y)[0];
+      }
+    }
+    if (y-1 >= 0) {
+      if (((p.pixels[((y-1)*p.height)] >> 24) & 0x000000FF) > minimiseThreshold) {
+        p.pixels[y*p.height+x] = 0;
+        dimensions[1] = minimise(p, x, y-1)[1];
+      }
+    }
+    if (x+1 < p.width) {
+      if (((p.pixels[y*p.height+x+1] >> 24) & 0x000000FF) > minimiseThreshold) {
+        dimensions[2] = minimise(p, x+1, y)[2];
+      }
+    }
+    if (y+1 < p.height) {
+      if (((p.pixels[((y+1)*p.height)] >> 24) & 0x000000FF) > minimiseThreshold) {
+        p.pixels[y*p.height+x] = 0;
+        dimensions[3] = minimise(p, x, y+1)[3];
+      }
+    }
+    
+    
+    if (dimensions[0] == -1) {
+      dimensions[0] = x;
+    }
+    if (dimensions[1] == -1) {
+      dimensions[1] = y;
+    }
+    if (dimensions[2] == -1) {
+      dimensions[2] = x;
+    }
+    if (dimensions[3] == -1) {
+      dimensions[3] = y;
+    }
+    
+    println(dimensions);
+    
+    
+    return dimensions;
+  }
+  */
+  
+  
+  public void loadAllShaders() {
+    if (!loadOnGoMode) {
+       File directory = new File(PATH_SHADER);
+       if (!directory.exists()) {
+         console.error("\""+PATH_SHADER+"\" directory not found.");
+       }
+       for (File file : directory.listFiles()) {
+         PShader s = loadShader(file.getAbsolutePath());
+         s.set("u_resolution", PApplet.parseFloat(width), PApplet.parseFloat(height));
+         //s.set("iResolution", float(width), float(height));
+         shaders.add(s);
+         
+         String initialName = file.getName();
+         String name = initialName.substring(0, initialName.indexOf('.'));
+         console.info("Loaded shader "+name);
+         shaderNames.set(name, shaders.size()-1);
+       }
+    }
+  }
+  
+  public PShader getShaderByName(String shaderName) {
+    return shaders.get(shaderNames.get(shaderName));
+  }
+  
+  public void addPostProcessingShader(PShader shader) {
+    postProcessingShaders.add(shader);
+  }
+  
+  public void addPostProcessingShader(String shaderName) {
+    postProcessingShaders.add(getShaderByName(shaderName));
+  }
+  
+  public void nextFrame() {
+    this.framecount++;
+  }
+  
+  private int recFrame = 0;
+  public void display() {
+    
+    for (PShader shader : shaders) {
+      shader.set("u_time", this.getFramecount() / this.getFramerate());
+      //shader.set("iTime", this.getFramecount() / this.getFramerate());
+    }
+    
+    for (PShader shader : postProcessingShaders) {
+      this.shaderCanvas.beginDraw();
+      this.shaderCanvas.shader(shader);
+      this.shaderCanvas.image(this.display, 0, 0, this.display.width, this.display.height);
+      this.shaderCanvas.endDraw();
+      display.beginDraw();
+      display.clear();
+      display.endDraw();
+      this.display.beginDraw();
+      this.display.image(this.shaderCanvas, 0, 0, this.display.width, this.display.height);
+      this.display.endDraw();
+      
+    }
+    
+    image(this.display, 0, 0, width, height);
+    
+    if (record && looperHasRun) {
+      if (recFrame == 0) {
+        recFrame++;        
+      }
+      else {
+        String fn = "";
+        if (recFrame < 10) {
+          fn = "0000"+str(recFrame);
+        }
+        else if (recFrame < 100) {
+          fn = "000"+str(recFrame);
+        }
+        else if (recFrame < 1000) {
+          fn = "00"+str(recFrame);
+        }
+        else if (recFrame < 10000) {
+          fn = "0"+str(recFrame);
+        }
+        recFrame++;
+        display.save(FRAMES_FOLDER_DIR+fn+".tiff");
+      }
+    }
+    //display.save("C:/My Data/Frames/"+str(this.framecount)+".tga");
+    
+    display.beginDraw();
+    display.clear();
+    display.endDraw();
+    shaderCanvas.beginDraw();
+    shaderCanvas.clear();
+    shaderCanvas.endDraw();
+    looperHasRun = false;
+    
+    
+  }
+}
+
+
+
+public class SketchImage {
+    PImage img;
+    PShape quad;
+    float wid;
+    float high;
+    boolean ready = false;
+    PShader shader;
+    
+    
+    public SketchImage(PImage img, float w, float h) {
+      this.img = img;
+      this.wid = w;
+      this.high = h;
+      this.createQuad();
+    }
+    public SketchImage(PImage img) {
+      this.img = img;
+      this.wid = img.width;
+      this.high = img.height;
+      this.createQuad();
+    }
+    
+    private void createQuad() {
+      this.quad = createShape();
+      this.quad.setVisible(true);
+      this.quad.beginShape(QUAD);
+      this.quad.noStroke();
+      this.quad.texture(this.img);
+      this.quad.normal(0, 0, 1);
+      
+      float startX = 0, startY = this.wid;
+      float endX   = 0, endY   = this.high;
+      
+      this.quad.vertex(startX, startY, 0, 0);
+      this.quad.vertex(endX, startY, this.img.width, 0);
+      this.quad.vertex(endX, endY, this.img.width, this.img.height);
+      this.quad.vertex(startX, endY, 0, this.img.height);
+      this.quad.endShape();
+    }
+    
+    public void setWi(float w) {
+      this.wid = w;
+    }
+    
+    public void setHi(float h) {
+      this.high = h;
+    }
+    
+    public boolean hasShader() {
+      return !(this.shader == null);
+    }
+    
+    public PShader getShader() {
+      return this.shader;
+    }
+    public void setShader(PShader shader) {
+      this.shader = shader;
+    }
+    
+    public void setImg(PImage i) {
+      this.img = i;
+    }
+    
+    public boolean isReady() {
+      if (this.getImg().width != 0) {
+        this.ready = false;
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
+    
+    public boolean errorOccured() {
+      return (this.getImg().width <= -1);
+    }
+    
+    public PImage getImg() {
+      return this.img;
+    }
+    public float getWidth() {
+      return this.wid;
+    }
+    public float getHeight() {
+      return this.high;
+    }
+    
+    public float getTrueWidth() {
+      return this.img.width;
+    }
+    public float getTrueHeight() {
+      return this.img.height;
+    }
+    
+    public boolean intertedHeight() {
+      return (this.getHeight() < 0);
+    }
+  }
+//*******************************************
+//*****************SETTINGS******************
+int frameWidth = 1024, frameHeight = 1024;
+int     framerate              = 60;
+int   clearColor             = color(0);
+float   renderScale            = 1.0f;
+int     interval               = 1;
+boolean rec                    = false;
+boolean loadOnGo               = false;
+boolean fastRendering          = true;
+boolean exitWhenMusicEnds      = true;
+boolean extraDebugInfo         = true;
+//*******************************************
+//************IMAGE ATTRIBUTES***************
+String imgAttributes[] = {
+};
+//*******************************************
+//*************SETUP CODE HERE***************
+public void ready() {
+  playMusic("music.wav", 107.96f, 0.5f);
+}
+//*******************************************
+//*************LOOP CODE HERE****************
+int blinkk = 0;
+public void looper() {
+  back("sunset");
+  float f = (framecount/60.f)*2.f+HALF_PI;
+  
+  
+  for (int i = 1; i < 30; i++) {
+    float ii = PApplet.parseFloat(i);
+    float t = f*0.2f + noise(ii)*15.f;
+    float size = 2.f;
+    img("cloud", 1000-PApplet.parseInt(  (t-floor(t))*2000.f  ), PApplet.parseInt(  height-500 ), PApplet.parseInt( size*500*noise(ii) ), PApplet.parseInt( size*300*noise(ii) ) );
+  }
+  
+  boolean glo = false;
+
+
+  int ne = floor(framecount/10)%3 + 1;
+  String nee = "n"+str(ne);
+  if (floor(framecount/10)%12 + 1 == 12) {
+    nee = "n"+str(ne)+"_blinkk";
+  }
+  sprite("neeeeeeee", nee);
+  sprite("anchor");
+  if (glo) sprite("glow", "back");
+  sprite("overlay", "sky");
+  if (glo) sketchie.draw.getShaderByName("starboard_glow").set("off", (float)sketchie.getSprite("glow").getX(), (float)sketchie.getSprite("glow").getY());
+  sketchie.draw.getShaderByName("starboard_overlay").set("off", (float)sketchie.getSprite("overlay").getX(), (float)sketchie.getSprite("overlay").getY());
+  autoSetShader("back", "starboard_glow");
+  autoSetShader("sky", "starboard_overlay");
+  if (glo) move("glow", 0, sin(f)*50);
+  move("overlay", 0, sin(f)*50);
+  move("neeeeeeee", 0, sin(f)*50);
+  move("anchor", 0, sin(f)*50 - 50);
+  //sprite("782384", "dougg");
+  //sprite("7384", "shirt");
+  
+  for (int i = 1; i < 20; i++) {
+    float ii = PApplet.parseFloat(i);
+    float t = f*0.2f + noise(ii)*15.f;
+    float size = 4.f;
+    img("cloud", 1000-PApplet.parseInt(  (t-floor(t))*2000.f  ), PApplet.parseInt(  height-400 ), PApplet.parseInt( size*500*noise(ii) ), PApplet.parseInt( size*300*noise(ii) ) );
+  }
+
+  dis.fill(color(255,0,0));
+  dis.rect(20, 20, 100, 100);
+  
+  if (framecount > 300) {
+    //exit();
+  }
+  
+  sprite("sigblack");
+}
+//*******************************************k
 enum Transform {
     SINGLE,
     DOUBLE,
@@ -1917,1125 +3138,9 @@ class QuadVertices {
       v[3].set(xEnd2,   yEnd2);
     }
 }
-String PATH_CACHE                = sketchPath()+"/data/engine/cache/";
-String PATH_IMG                  = sketchPath()+"/data/img/";
-String PATH_SHADER               = sketchPath()+"/data/shaders/";
-String PATH_SPRITES_ATTRIB       = sketchPath()+"/data/sprites/";
-String FRAMES_FOLDER_DIR         = sketchPath()+"/data/frames/";
+  PGraphics dis;
 
 
-String PATH_MISSING_ICO               = sketchPath()+"/data/engine/icos/missing.png";
-String PATH_SND_NOPE                  = sketchPath()+"/data/engine/sounds/nope.wav";
-class Render {
-  private float rot = 0;
-  private int drawPoint = CORNER;
-  private HashMap<String, SketchImage> imgMap;
-  public  ArrayList<String> imgNames;
-  private float wi, hi;
-  private float wiPix, hiPix;
-  private int scaleMode = 0;
-  private boolean loadOnGoMode = false;
-  private boolean caching = true;
-  private boolean fastMode = true;
-  private int lowResBase = 256;
-  private PImage missingImg;
-  private PGraphics display;
-  private PGraphics shaderCanvas;
-  private ArrayList<PShader> postProcessingShaders;
-  private ArrayList<PShader> shaders;
-  private IntDict shaderNames;
-  private Integer framecount = 0;
-  private Float framerate  = 60.0f;
-  private QuadVertices vertex;
-  private float sceneScaleX, sceneScaleY;
-  private Console console;
-  private boolean wireframe = false;
-  private boolean looperHasRun = false;
-  private float radius;
-  
-  public Render(int w, int h) {
-    ready(w, h);
-  }
-  
-  public Render(int w) {
-    float aspect = (float)w/width;
-    this.ready(w, PApplet.parseInt(height*aspect));
-  }
-  
-  public Render(float scale) {
-    this.ready(PApplet.parseInt(width*scale), PApplet.parseInt(height*scale));
-  }
-  
-  private void ready(int w, int h) {
-    this.display      = createGraphics(w, h, P3D);
-    this.shaderCanvas = createGraphics(w, h, P2D);
-    this.sceneScaleX = (float)w/app.width;
-    this.sceneScaleY = (float)h/app.height;
-    imgMap = new HashMap<String, SketchImage>();
-    console = new Console();
-    missingImg = loadImage(PATH_MISSING_ICO);
-    postProcessingShaders  = new ArrayList<PShader>();
-    shaderNames = new IntDict();
-    imgNames = new ArrayList<String>();
-    shaders = new ArrayList<PShader>();
-  }
-  
-  private void setConsole(Console console) {
-    this.console = console;
-  }
-  public float getScaleX() {
-    return sceneScaleX;
-  }
-  public float getScaleY() {
-    return sceneScaleY;
-  }
-  
-  public void loopRun() {
-    looperHasRun = true;
-  }
-  
-  
-  
-  
-  public int width() {
-    return display.width;
-  }
-
-  public int height() {
-    return display.height;
-  }
-  
-  public Float getFramerate() {
-    return this.framerate;
-  }
-  
-  public void changeFramecount(int amount) {
-    this.framecount += amount;
-    if (this.framecount < 0) {
-      this.framecount = 0;
-    }
-  }
-  
-  public void setFramecount(int amount) {
-    this.framecount = amount;
-    if (this.framecount < 0) {
-      this.framecount = 0;
-    }
-  }
-  
-  
-  public Integer getFramecount() {
-    return this.framecount;
-  }
-  
-  public void showWireframe() {
-    wireframe = true;
-  }
-  
-  public void hideWireframe() {
-    wireframe = false;
-  }
-  
-  public void setFramerate(float framerate) {
-    this.framerate = framerate;
-    frameRate(framerate);
-  }
-  
-  public void enableFastRendering() {
-    fastMode = true;
-    if (caching) {
-      console.log("Fast mode enabled");
-    }
-    else {
-      console.warn("Fast mode enabled but caching disabled.");
-    }
-  }
-  public void disableFastRendering() {
-    fastMode = false;
-  }
-  
-  public void loadOnGo() {
-    loadOnGoMode = true;
-    console.log("Sketch will load assets on the go.");
-  }
-  
-  public boolean attribExists(String attrib) {
-    
-    for (String a : imgAttributes) {
-      if (a.equals(attrib)) {
-        return true;
-      }
-    }
-    return false;
-  }
- 
-  private String cacheFileType = ".png";
-  
-  public void loadImg(String imgPath) {
-    console.info(imgPath);
-    File f = new File(imgPath);
-    String n = f.getName();
-    String ext = "";
-    {
-      try {
-        ext = n.substring(n.length()-4, n.length());
-      }
-      catch (StringIndexOutOfBoundsException e) {
-        console.warn("The file type (\"\") is not an image.");
-        imgMap.put(n, new SketchImage(missingImg));
-        return;
-      }
-      if (!(ext.equals(".png") || ext.equals(".gif") || ext.equals(".jpg") || ext.equals(".tif"))) {
-        console.warn("The file type for "+n+" ("+ext+") is not an image.");
-        imgMap.put(n, new SketchImage(missingImg));
-        return;
-      }
-    }
-    int fileSize = (int)f.length();
-    n = n.substring(0, n.length()-4);
-    SketchImage img;
-    if (!f.exists()) {
-      console.warn("File "+imgPath+" not found.");
-      imgMap.put(n, new SketchImage(missingImg));
-      return;
-    }
-    if (caching && fastMode) {
-      SketchImage lowResImage = tryGetCache(n);
-      //If cache doesn't exist...
-      if (lowResImage == null) {
-        PImage I = loadImage(imgPath);
-        if (I.width <= 0 || I.height <= 0) {
-          console.warn("A problem with "+imgPath+" occured and could not be loaded.");
-          imgMap.put(n, new SketchImage(missingImg));
-          return;
-        }
-        
-        int originWid = I.width;
-        int originHi  = I.height;
-        if (attribExists(n+":mini") || attribExists("ALL:mini")) {
-          I = minimiseImg(I);
-        }
-        
-        PGraphics lowRes;
-        if ((originWid > lowResBase) && (originHi > lowResBase)) {
-          int wid;
-          int high;
-          float aspect = PApplet.parseFloat(I.width)/PApplet.parseFloat(I.height);
-          if (I.height >= I.width) {
-            wid  = PApplet.parseInt(PApplet.parseFloat(lowResBase)*aspect);
-            high = lowResBase;
-          }
-          else {
-            wid  = lowResBase;
-            high = PApplet.parseInt(lowResBase/aspect);
-          }
-          lowRes = createGraphics(wid, high);
-          lowRes.beginDraw();
-          lowRes.clear();
-          lowRes.image(I, 0, 0, wid, high);
-          lowRes.endDraw();
-          img = new SketchImage(lowRes, I.width, I.height);
-          imgMap.put(n, img);
-          imgNames.add(n);
-          storeCache(img, n, fileSize, f.getAbsolutePath());
-        }
-        else {
-          img = new SketchImage(I);
-          imgMap.put(n, img);
-          imgNames.add(n);
-        }
-      }
-      else {
-        img = lowResImage;
-        imgMap.put(n, img);
-        imgNames.add(n);
-      }
-    }
-    else {
-      PImage I = loadImage(imgPath);
-      
-      if (I.width <= 0 || I.height <= 0) {
-        console.warn("A problem with "+imgPath+" occured and could not be loaded.");
-        imgMap.put(n, new SketchImage(missingImg));
-        return;
-      }
-      
-      if (attribExists(n+":mini") || attribExists("ALL:mini")) {
-        I = minimiseImg(I);
-      }
-      
-      img = new SketchImage(I);
-      imgMap.put(n, img);
-      imgNames.add(n);
-    }
-  }
-  
-  private void storeCache(SketchImage img, String name, int fileSize, String originalPath) {
-    if (caching) {
-      File cachedImage = new File(PATH_CACHE+name+cacheFileType);
-      if (!cachedImage.exists()) {
-        console.info("Cache for "+name+" created.");
-        img.getImg().save(PATH_CACHE+name+cacheFileType);
-        JSONObject properties = new JSONObject();
-        properties.setString("path", originalPath);
-        properties.setInt("width", (int)img.getWidth());
-        properties.setInt("height", (int)img.getHeight());
-        properties.setBoolean("mini", attribExists(name+":mini") || attribExists("ALL:mini"));
-        properties.setInt("size", fileSize);
-        saveJSONObject(properties, PATH_CACHE+name+".json");
-      }
-    }
-  }
-  
-  private SketchImage tryGetCache(String name) {
-    if (caching) {
-      PImage cachedImg;
-      float wid  = 0;
-      float high = 0;
-      File cachedImage = new File(PATH_CACHE+name+cacheFileType);
-      if (cachedImage.exists()) {
-        cachedImg = loadImage(PATH_CACHE+name+cacheFileType);
-        
-        File propertiesFile = new File(PATH_CACHE+name+".json");
-        if (!propertiesFile.exists()) {
-          console.info("Missing JSON. Cache will be re-created.");
-          return null;
-        }
-        JSONObject properties = loadJSONObject(PATH_CACHE+name+".json");
-        wid  = (float)properties.getInt("width");
-        if (cacheFileType.equals(".tga")) {               //Because of a bug in processing, we need to flip images upside down if therethe file type the cached images are in is tga.
-          high = -properties.getInt("height");
-        }
-        else {
-          high = properties.getInt("height");
-        }
-        
-        //Return null so we can apply new attributes.
-        if (properties.getBoolean("mini") != (attribExists(name+":mini") || attribExists("ALL:mini"))) {
-          console.info("Mini attribute changed. Cache will be re-created.");
-          return null;
-        }
-        
-        String path = properties.getString("path");
-        
-        int s = (int)(new File(path)).length();
-        if (properties.getInt("size") != s) {
-          console.info(name+" is different ("+str(properties.getInt("size"))+", "+str(s)+") Cache will be re-created.");
-          return null;
-        }
-        
-      }
-      else {
-        console.info("No cache for "+name+" found.");
-        return null;
-      }
-      console.info("Loaded cache: "+name);
-      return new SketchImage(cachedImg, wid, high);
-    }
-    else {
-      console.info("Caching disabled, no cache for "+name+" loaded.");
-      return null;
-    }
-  }
-  
-  public SketchImage getImg(String imgName) {
-    if (loadOnGoMode) {
-      SketchImage img;
-      img = imgMap.get(imgName);
-      if (img == null) {
-        loadImg(PATH_IMG+imgName+".png");
-        img = imgMap.get(imgName);
-        if (img == null) {
-          console.warnOnce("Could not find "+imgName+" in memory.");
-          return new SketchImage(missingImg);
-        }
-      }
-      return img;
-    }
-    else {
-      SketchImage img;
-      img = imgMap.get(imgName);
-      if (img == null) {
-        console.warnOnce("Could not find "+imgName+" in memory.");
-        return new SketchImage(missingImg);
-      }
-      return img;
-    }
-  }
-  
-  public PImage get(String imgName) {
-    SketchImage img;
-    img = imgMap.get(imgName);
-    if (img == null) {
-      console.warnOnce("Could not find "+imgName+" in memory.");
-      return missingImg;
-    }
-    return img.getImg();
-  }
-  
-  public void minimiseImg(String imgName) {
-    SketchImage img = getImg(imgName);
-    int[] d = minimise(img.getImg());
-    img.setImg(img.getImg().get(d[0], d[1], d[2]-d[0], d[3]-d[1]));
-    img.setWi(d[2]-d[0]);
-    img.setHi(d[3]-d[1]);
-  }
-  public PImage minimiseImg(PImage img) {
-    int[] d = minimise(img);
-    return (img.get(d[0], d[1], d[2]-d[0], d[3]-d[1]));
-  }
-  
-  public void autoImg(String imgName, float xpos, float ypos) {this.scaleMode = 0; this.bitmapImg(this.getImg(imgName), xpos, ypos);}
-  public void autoImg(String imgName, float xpos, float ypos, int w, int h) {drawPoint = CORNER; this.scaleMode = 1; this.wiPix = (float)w; this.hiPix = (float)h; this.bitmapImg(this.getImg(imgName), xpos, ypos);}
-  public void autoImg(String imgName, float xpos, float ypos, float w, float h) {this.scaleMode = 2; this.wi = w; this.hi = h; this.bitmapImg(this.getImg(imgName), xpos, ypos);}
-  
-  public void autoImg(Sprite s, float xpos, float ypos, float w, float h) {
-    drawPoint = CORNER;
-    this.scaleMode = 2; 
-    this.wi = w; 
-    this.hi = h;
-    QuadVertices v = this.vertex;
-    this.vertex = s.vertex;
-    this.bitmapImg(this.getImg(s.getImg()), xpos, ypos);
-    this.vertex = v;
-  }
-  
-  public void autoImgRotate(Sprite s) {
-    drawPoint = ROUND; 
-    rot = s.getRot();
-    radius = s.getRadius();
-    this.scaleMode = 2; 
-    this.wi = s.getWidth();
-    this.hi = s.getHeight()-PApplet.parseInt((float)s.getHeight()*s.getBop());
-    float x = s.getX();
-    float y = s.getY()+s.getHeight()*s.getBop();
-    this.bitmapImg(this.getImg(s.getImg()), x, y);
-  }
-  
-  public void autoImgVertex(Sprite s) {
-    if (s.getName().equals("glow")) {
-      display.blendMode(ADD);
-    }
-    drawPoint = QUAD;
-    this.scaleMode = 2; 
-    this.wi = s.getWidth();
-    this.hi = s.getHeight()-PApplet.parseInt((float)s.getHeight()*s.getBop());
-    QuadVertices v = this.vertex;
-    this.vertex = s.vertex;
-    float x = s.getX();
-    float y = s.getY()+s.getHeight()*s.getBop();
-    this.bitmapImg(this.getImg(s.getImg()), x, y);
-    this.vertex = v;
-    
-    if (s.getName().equals("glow")) {
-      display.blendMode(NORMAL);
-    }
-  }
-  
-  public void img(PImage p, float xpos, float ypos) {this.scaleMode = 0; this.bitmapImg(p,xpos,ypos);}
-  public void img(PImage p, float xpos, float ypos, int w, int h) {this.scaleMode = 1; this.wiPix = (float)w; this.hiPix = (float)h; this.bitmapImg(p,xpos,ypos);}
-  public void img(PImage p, float xpos, float ypos,  float w, float h) {this.scaleMode = 2; this.wi = w; this.hi = h; this.bitmapImg(p,xpos,ypos);}
-  
-  public void autoSetShader(String imgName, PShader shader) {
-    this.getImg(imgName).setShader(shader);
-  }
-  public void autoSetShader(String imgName, String shaderName) {
-    this.getImg(imgName).setShader(this.getShaderByName(shaderName));
-  }
-  public PShader autoGetShader(String imgName) {
-    return this.getImg(imgName).getShader();
-  }
-  
-  public void rotation(float deg) {
-    rot = radians(deg);
-  }
-  
-  public void drawFrom(int mode) {
-    drawPoint = mode;
-  }
-  
-  private void bitmapImg(PImage p, float xpos, float ypos) {
-    this.bitmapImg(new SketchImage(p, p.width, p.height), xpos, ypos);
-  }
-  
-  public void tint(int col) {
-    display.tint(col);
-  }
-  
-  public void noTint() {
-    display.noTint();
-  }
-  
-  private float zpos = 1.0f;
-  
-  public void zPosition(float z) {
-    this.zpos = z;
-  }
-  
-  public void danceFloor() {
-    display.beginDraw();
-    display.noStroke();
-    display.fill(0, 100);
-    display.rect(0, this.height()-200, this.width(), 200);
-    display.endDraw();
-  }
-  
-  private float fract(float x, float y) {
-      if (x > y) {
-        return y/x;
-      }
-      else if (y > x) {
-        return x/y;
-      }
-      else {
-        return 1;
-      }
-  }
-  
-  public void setAddMode() {
-    display.beginDraw();
-    display.blendMode(ADD);
-    display.endDraw();
-  }
-  
-  public void setNormalMode() {
-    display.beginDraw();
-    display.blendMode(NORMAL);
-    display.endDraw();
-  }
-  
-  private void bitmapImg(SketchImage p, float xpos, float ypos) {
-    //setAddMode();
-    display.beginDraw();
-    //display.pushMatrix();
-    //display.translate(xpos, ypos);
-    //display.rotate(rot);
-    
-    xpos *= this.sceneScaleX;
-    ypos *= this.sceneScaleY;
-    
-    if (p.hasShader()) {
-      display.shader(p.getShader());
-    }
-    
-    float w = 0.0f, h = 0.0f;
-    
-    switch (this.scaleMode) {
-      case 0:
-      w = (p.getWidth()) * this.sceneScaleX;
-      h = (p.getHeight()) * this.sceneScaleY;
-      break;
-      case 1:
-      w = (this.wiPix);
-      h = (this.hiPix);
-      break;
-      case 2:
-      w = p.getWidth() * this.wi * this.sceneScaleX;
-      h = p.getHeight() * this.hi * this.sceneScaleX;
-      break;
-    }
-    
-    if (this.wireframe) {
-      display.stroke(sin(frameCount*0.1f)*127+127, 100);
-      display.strokeWeight(2);
-    }
-    else {
-      display.noStroke();
-    }
-    display.beginShape();
-    display.texture(p.getImg());
-    
-    float startX = 0.0f, startY = 0.0f;
-    float endX = 0.0f,   endY = 0.0f  ;
-    
-    switch (drawPoint) {
-      case CENTER:
-        startX = -w/2; startY = -h/2;
-        endX   = startX+w; endY   = startY+h;
-      break;
-      case CORNER:
-        startX = xpos;     startY = ypos;
-        endX   = startX+w; endY   = startY+(h);
-      break;
-      case ROUND:
-        startX = xpos;     startY = ypos;
-        endX   = startX+w; endY   = startY+(h);
-      break;
-    }
-    
-    
-    
-    if (drawPoint == QUAD) {
-      this.display.vertex(vertex.v[0].x, vertex.v[0].y, this.zpos, 0, 0);
-      this.display.vertex(vertex.v[1].x, vertex.v[1].y, this.zpos, p.getTrueWidth(), 0);
-      this.display.vertex(vertex.v[2].x, vertex.v[2].y, this.zpos, p.getTrueWidth(), p.getTrueHeight());
-      this.display.vertex(vertex.v[3].x, vertex.v[3].y, this.zpos, 0, p.getTrueHeight());
-      this.display.vertex(vertex.v[0].x, vertex.v[0].y, this.zpos, 0, 0);
-      drawPoint = prevDrawPoint;
-    }
-    else if (drawPoint == ROUND) {
-      float r = HALF_PI/2 + rot;
-      float xr = radius;
-      float yr = radius;
-      float xd = startX+wi/2;
-      float yd = startY+hi/2;
-      float f = atan(wi/hi);
-      float x = sin(r+f)*xr + xd;
-      float y = cos(r+f)*yr + yd;
-      this.display.vertex(x, y, this.zpos, p.getTrueWidth(), 0);
-      x = sin(r-f+HALF_PI)*xr + xd;
-      y = cos(r-f+HALF_PI)*yr + yd;
-      this.display.vertex(x, y, this.zpos, 0, 0);
-      x = sin(r+f+PI)*xr + xd;
-      y = cos(r+f+PI)*yr + yd;
-      this.display.vertex(x, y, this.zpos, 0, p.getTrueHeight());
-      x = sin(r-f+HALF_PI+PI)*xr + xd;
-      y = cos(r-f+HALF_PI+PI)*yr + yd;
-      this.display.vertex(x, y, this.zpos, p.getTrueWidth(), p.getTrueHeight());
-      x = sin(r+f)*xr + xd;
-      y = cos(r+f)*yr + yd;
-      this.display.vertex(x, y, this.zpos, p.getTrueWidth(), 0);
-      
-      
-      //float x = sin(r)*xr + xd;
-      //float y = cos(r)*yr + yd;
-      //this.display.vertex(x, y, this.zpos, 0, 0);
-      //x = sin(r-HALF_PI)*xr + xd;
-      //y = cos(r-HALF_PI)*yr + yd;
-      //this.display.vertex(x, y, this.zpos, p.getTrueWidth(), 0);
-      //x = sin(r-PI)*xr + xd;
-      //y = cos(r-PI)*yr + yd;
-      //this.display.vertex(x, y, this.zpos, p.getTrueWidth(), p.getTrueHeight());
-      //x = sin(r-HALF_PI-PI)*xr + xd;
-      //y = cos(r-HALF_PI-PI)*yr + yd;
-      //this.display.vertex(x, y, this.zpos, 0, p.getTrueHeight());
-      //x = sin(r-TWO_PI)*xr + xd;
-      //y = cos(r-TWO_PI)*yr + yd;
-      //this.display.vertex(x, y, this.zpos, 0, 0);
-    }
-    else {
-      this.display.vertex(startX, startY, this.zpos, 0, 0);
-      this.display.vertex(endX, startY,   this.zpos, p.getTrueWidth(), 0);
-      this.display.vertex(endX, endY,     this.zpos, p.getTrueWidth(), p.getTrueHeight());
-      this.display.vertex(startX, endY,   this.zpos, 0, p.getTrueHeight());
-      this.display.vertex(startX, startY, this.zpos, 0, 0);
-    }
-    
-    
-    display.endShape();
-    display.endDraw();
-    display.resetShader();
-    if (p.hasShader()) {
-      p.getShader().set("time", this.getFramecount() / this.getFramerate());
-      display.resetShader();
-    }
-    
-    //setNormalMode();
-  }
-  
-  private int prevDrawPoint;
-  
-  
-  public void gradientHorizontal(int x, int y, float w, float h, int c1, int c2) {
-    display.beginDraw();
-    display.noFill();
-  
-    for (int i = y; i <= y+h; i++) {
-      float inter = map(i, y, y+h, 0, 1);
-      int c = lerpColor(c1, c2, inter);
-      display.stroke(c);
-      display.line(x, i, x+w, i);
-    }
-    display.endDraw();
-  }
-  
-  public void gradientVertical(int x, int y, float w, float h, int c1, int c2) {
-    display.beginDraw();
-    for (int i = x; i <= x+w; i++) {
-      float inter = map(i, x, x+w, 0, 1);
-      int c = lerpColor(c1, c2, inter);
-      display.stroke(c);
-      display.line(i, y, i, y+h);
-    }
-    display.endDraw();
-  }
-    
-  public void txt(String t, float x, float y, float size) {
-    display.beginDraw();
-    display.textAlign(LEFT, LEFT);
-    display.textSize(size);
-    display.fill(255);
-    display.text(t, x, y);
-    display.endDraw();
-  }
-  
-  private float flash;
-  public void bootsAndCats() {
-    if (flash > 0.0f) {
-      display.beginDraw();
-      display.blendMode(ADD);
-      display.fill(this.flash);
-      this.flash -= 5.0f;
-      display.noStroke();
-      display.rect(0,0,display.width,display.height);
-      display.blendMode(NORMAL);
-      display.endDraw();
-    }
-  }
-  
-  public void pump(float flash) {
-    this.flash = flash;
-  }
-  
-
-  
-  private ArrayList<File> allImages = new ArrayList<File>();
-  private int loadImageIndex = 0;
-  
-  public void prepareLoadAllImages(String dir) {
-    if (!loadOnGoMode) {
-       File directory = new File(sketchPath()+"/"+dir);
-       if (!directory.exists()) {
-         console.error(dir+" directory not found.");
-       }
-       File[] imgs = directory.listFiles();
-       
-       for (File f : imgs) {
-         allImages.add(f);
-         if (f.isDirectory()) {
-           prepareLoadAllImages(dir+f.getName()+"/");
-         }
-       }
-       
-       
-    }
-  }
-  
-  public boolean loading() {
-    if (loadImageIndex >= allImages.size()) {
-      return false;
-    }
-    File f = allImages.get(loadImageIndex++);
-    this.loadImg(f.getAbsolutePath());
-    return true;
-  }
-  
-  public float loadPercentage() {
-    return (PApplet.parseFloat(loadImageIndex)/PApplet.parseFloat(allImages.size()));
-  }
-  
-  
-  private int minimiseThreshold = 10;
-  private int minimise(PImage p)[] {
-    p.loadPixels();
-    
-    int dimensions[] = {0, 0, 0, 0};
-    
-    //From left
-    for (int x = 0; x < p.width; x++) {
-      for (int y = 0; y < p.height; y++) {
-        if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) {
-          dimensions[0] = x;
-          
-          //End the loops by force setting the conditions to be false.
-          x = p.width;
-          y = p.height;
-        }
-      }
-    }
-    
-    //From top
-    for (int y = 0; y < p.height; y++) {
-      for (int x = 0; x < p.width; x++) {
-        if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) {
-          dimensions[1] = y;
-          
-          //End the loops by force setting the conditions to be false.
-          x = p.width;
-          y = p.height;
-        }
-      }
-    }
-    
-    //From right
-    for (int x = p.width-1; x > 0; x--) {
-      for (int y = 0; y < p.height; y++) {
-        if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) {
-          dimensions[2] = x;
-          //End the loops by force setting the conditions to be false.
-          x = 0;
-          y = p.height;
-        }
-      }
-    }
-    
-    //From bottom
-    for (int y = p.height-1; y > 0; y--) {
-      for (int x = 0; x < p.width; x++) {
-        if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) {
-          dimensions[3] = y;
-          
-          //End the loops by force setting the conditions to be false.
-          x = p.width;
-          y = 0;
-          
-        }
-      }
-    }
-    
-    return dimensions;
-  }
-  
-  /*
-  private int minimise(PImage p)[] {
-    p.loadPixels();
-    
-    if (((p.pixels[(p.width)*(p.height/2)+p.width/2] >> 24) & 0x000000FF) > minimiseThreshold) 
-    {
-      return minimise(p, p.width/2, p.height/2);
-    }
-    else {
-      for (int y = 0; y < p.height; y++) {
-        for (int x = 0; x < p.width; x++) {
-          if (((p.pixels[(p.width)*(y)+x] >> 24) & 0x000000FF) > minimiseThreshold) 
-          {
-            return minimise(p, x, y);
-          }
-        }
-      }
-    }
-    int[] empty = {0, 0, 0, 0};
-    return empty;
-    
-  }
-  
-  private int minimiseThreshold = 127;
-  private int minimise(PImage p, int x, int y)[] {
-    int dimensions[] = new int[4];
-    dimensions[0] = -1;
-    dimensions[1] = -1;
-    dimensions[2] = -1;
-    dimensions[3] = -1;
-    if (x-1 >= 0) {
-      if (((p.pixels[y*p.height+x-1] >> 24) & 0x000000FF) > minimiseThreshold) {
-        p.pixels[y*p.height+x] = 0;
-        dimensions[0] = minimise(p, x-1, y)[0];
-      }
-    }
-    if (y-1 >= 0) {
-      if (((p.pixels[((y-1)*p.height)] >> 24) & 0x000000FF) > minimiseThreshold) {
-        p.pixels[y*p.height+x] = 0;
-        dimensions[1] = minimise(p, x, y-1)[1];
-      }
-    }
-    if (x+1 < p.width) {
-      if (((p.pixels[y*p.height+x+1] >> 24) & 0x000000FF) > minimiseThreshold) {
-        dimensions[2] = minimise(p, x+1, y)[2];
-      }
-    }
-    if (y+1 < p.height) {
-      if (((p.pixels[((y+1)*p.height)] >> 24) & 0x000000FF) > minimiseThreshold) {
-        p.pixels[y*p.height+x] = 0;
-        dimensions[3] = minimise(p, x, y+1)[3];
-      }
-    }
-    
-    
-    if (dimensions[0] == -1) {
-      dimensions[0] = x;
-    }
-    if (dimensions[1] == -1) {
-      dimensions[1] = y;
-    }
-    if (dimensions[2] == -1) {
-      dimensions[2] = x;
-    }
-    if (dimensions[3] == -1) {
-      dimensions[3] = y;
-    }
-    
-    println(dimensions);
-    
-    
-    return dimensions;
-  }
-  */
-  
-  
-  public void loadAllShaders() {
-    if (!loadOnGoMode) {
-       File directory = new File(PATH_SHADER);
-       if (!directory.exists()) {
-         console.error("\""+PATH_SHADER+"\" directory not found.");
-       }
-       for (File file : directory.listFiles()) {
-         PShader s = loadShader(file.getAbsolutePath());
-         s.set("u_resolution", PApplet.parseFloat(width), PApplet.parseFloat(height));
-         //s.set("iResolution", float(width), float(height));
-         shaders.add(s);
-         
-         String initialName = file.getName();
-         String name = initialName.substring(0, initialName.indexOf('.'));
-         console.info("Loaded shader "+name);
-         shaderNames.set(name, shaders.size()-1);
-       }
-    }
-  }
-  
-  public PShader getShaderByName(String shaderName) {
-    return shaders.get(shaderNames.get(shaderName));
-  }
-  
-  public void addPostProcessingShader(PShader shader) {
-    postProcessingShaders.add(shader);
-  }
-  
-  public void addPostProcessingShader(String shaderName) {
-    postProcessingShaders.add(getShaderByName(shaderName));
-  }
-  
-  public void nextFrame() {
-    this.framecount++;
-  }
-  
-  private int recFrame = 0;
-  public void display() {
-    
-    for (PShader shader : shaders) {
-      shader.set("u_time", this.getFramecount() / this.getFramerate());
-      //shader.set("iTime", this.getFramecount() / this.getFramerate());
-    }
-    
-    for (PShader shader : postProcessingShaders) {
-      this.shaderCanvas.beginDraw();
-      this.shaderCanvas.shader(shader);
-      this.shaderCanvas.image(this.display, 0, 0, this.display.width, this.display.height);
-      this.shaderCanvas.endDraw();
-      display.beginDraw();
-      display.clear();
-      display.endDraw();
-      this.display.beginDraw();
-      this.display.image(this.shaderCanvas, 0, 0, this.display.width, this.display.height);
-      this.display.endDraw();
-      
-    }
-    
-    image(this.display, 0, 0, width, height);
-    
-    if (record && looperHasRun) {
-      if (recFrame == 0) {
-        recFrame++;        
-      }
-      else {
-        String fn = "";
-        if (recFrame < 10) {
-          fn = "0000"+str(recFrame);
-        }
-        else if (recFrame < 100) {
-          fn = "000"+str(recFrame);
-        }
-        else if (recFrame < 1000) {
-          fn = "00"+str(recFrame);
-        }
-        else if (recFrame < 10000) {
-          fn = "0"+str(recFrame);
-        }
-        recFrame++;
-        display.save(FRAMES_FOLDER_DIR+fn+".tiff");
-      }
-    }
-    //display.save("C:/My Data/Frames/"+str(this.framecount)+".tga");
-    
-    display.beginDraw();
-    display.clear();
-    display.endDraw();
-    shaderCanvas.beginDraw();
-    shaderCanvas.clear();
-    shaderCanvas.endDraw();
-    looperHasRun = false;
-    
-    
-  }
-}
-
-
-
-public class SketchImage {
-    PImage img;
-    PShape quad;
-    float wid;
-    float high;
-    boolean ready = false;
-    PShader shader;
-    
-    
-    public SketchImage(PImage img, float w, float h) {
-      this.img = img;
-      this.wid = w;
-      this.high = h;
-      this.createQuad();
-    }
-    public SketchImage(PImage img) {
-      this.img = img;
-      this.wid = img.width;
-      this.high = img.height;
-      this.createQuad();
-    }
-    
-    private void createQuad() {
-      this.quad = createShape();
-      this.quad.setVisible(true);
-      this.quad.beginShape(QUAD);
-      this.quad.noStroke();
-      this.quad.texture(this.img);
-      this.quad.normal(0, 0, 1);
-      
-      float startX = 0, startY = this.wid;
-      float endX   = 0, endY   = this.high;
-      
-      this.quad.vertex(startX, startY, 0, 0);
-      this.quad.vertex(endX, startY, this.img.width, 0);
-      this.quad.vertex(endX, endY, this.img.width, this.img.height);
-      this.quad.vertex(startX, endY, 0, this.img.height);
-      this.quad.endShape();
-    }
-    
-    public void setWi(float w) {
-      this.wid = w;
-    }
-    
-    public void setHi(float h) {
-      this.high = h;
-    }
-    
-    public boolean hasShader() {
-      return !(this.shader == null);
-    }
-    
-    public PShader getShader() {
-      return this.shader;
-    }
-    public void setShader(PShader shader) {
-      this.shader = shader;
-    }
-    
-    public void setImg(PImage i) {
-      this.img = i;
-    }
-    
-    public boolean isReady() {
-      if (this.getImg().width != 0) {
-        this.ready = false;
-        return true;
-      }
-      else {
-        return false;
-      }
-    }
-    
-    public boolean errorOccured() {
-      return (this.getImg().width <= -1);
-    }
-    
-    public PImage getImg() {
-      return this.img;
-    }
-    public float getWidth() {
-      return this.wid;
-    }
-    public float getHeight() {
-      return this.high;
-    }
-    
-    public float getTrueWidth() {
-      return this.img.width;
-    }
-    public float getTrueHeight() {
-      return this.img.height;
-    }
-    
-    public boolean intertedHeight() {
-      return (this.getHeight() < 0);
-    }
-  }
-//*******************************************
-//*****************SETTINGS******************
-int frameWidth = 1024, frameHeight = 1024;
-int     framerate              = 60;
-int   clearColor             = color(0);
-float   renderScale            = 1.0f;
-int     interval               = 1;
-boolean rec                    = false;
-boolean loadOnGo               = false;
-boolean fastRendering          = true;
-boolean exitWhenMusicEnds      = true;
-boolean extraDebugInfo         = true;
-//*******************************************
-//************IMAGE ATTRIBUTES***************
-String imgAttributes[] = {
-};
-//*******************************************
-//*************SETUP CODE HERE***************
-public void ready() {
-  playMusic("music.wav", 107.96f, 0.5f);
-}
-//*******************************************
-//*************LOOP CODE HERE****************
-int blinkk = 0;
-public void looper() {
-  back("sunset");
-  float f = (framecount/60.f)*2.f+HALF_PI;
-  
-  
-  for (int i = 1; i < 30; i++) {
-    float ii = PApplet.parseFloat(i);
-    float t = f*0.2f + noise(ii)*15.f;
-    float size = 2.f;
-    img("cloud", 1000-PApplet.parseInt(  (t-floor(t))*2000.f  ), PApplet.parseInt(  height-500 ), PApplet.parseInt( size*500*noise(ii) ), PApplet.parseInt( size*300*noise(ii) ) );
-  }
-  
-  boolean glo = false;
-
-
-  int ne = floor(framecount/10)%3 + 1;
-  String nee = "n"+str(ne);
-  if (floor(framecount/10)%12 + 1 == 12) {
-    nee = "n"+str(ne)+"_blinkk";
-  }
-  sprite("neeeeeeee", nee);
-  sprite("anchor");
-  if (glo) sprite("glow", "back");
-  sprite("overlay", "sky");
-  if (glo) sketchie.draw.getShaderByName("starboard_glow").set("off", (float)sketchie.getSprite("glow").getX(), (float)sketchie.getSprite("glow").getY());
-  sketchie.draw.getShaderByName("starboard_overlay").set("off", (float)sketchie.getSprite("overlay").getX(), (float)sketchie.getSprite("overlay").getY());
-  autoSetShader("back", "starboard_glow");
-  autoSetShader("sky", "starboard_overlay");
-  if (glo) move("glow", 0, sin(f)*50);
-  move("overlay", 0, sin(f)*50);
-  move("neeeeeeee", 0, sin(f)*50);
-  move("anchor", 0, sin(f)*50 - 50);
-  //sprite("782384", "dougg");
-  //sprite("7384", "shirt");
-  
-  for (int i = 1; i < 20; i++) {
-    float ii = PApplet.parseFloat(i);
-    float t = f*0.2f + noise(ii)*15.f;
-    float size = 4.f;
-    img("cloud", 1000-PApplet.parseInt(  (t-floor(t))*2000.f  ), PApplet.parseInt(  height-400 ), PApplet.parseInt( size*500*noise(ii) ), PApplet.parseInt( size*300*noise(ii) ) );
-  }
-  
-  if (framecount > 300) {
-    //exit();
-  }
-  
-  sprite("sigblack");
-}
-//*******************************************k
-
-
-public void amongus() {
-    log("AMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUSAMONGUS");
-}
   public float getScaleX() {
     return sketchie.draw.getScaleX();
   }

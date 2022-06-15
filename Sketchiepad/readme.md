@@ -93,6 +93,7 @@ That about it for getting started cus honestly i'm not sure anybody's gonna be u
 
 - `w`  Press and hold to show the console. Press once to make any console text disappear.
 - `r`  Show the borders of all sprites.
+- `m`  Unmute the audio while paused, causing a stuttery crash-like sound, but can be useful to know what point in the audio we're in.
 
 - `[left arrow]`   go backwards 2 seconds.
 - `[right arrow]`  go forwards 2 seconds

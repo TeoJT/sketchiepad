@@ -39,10 +39,16 @@ So if you're going to use sketchiepad, be warned, it's made to make it easier to
 
 Now let's get into the basics.
 
-## Getting started.
-Every one of those files you see, `console.pde`, `Sketchiepad.pde`, `engine.pde` can be safely ignored. Unless you want to do some cool advanced trick or something, they're not really worth bothering with.
+## Prerequisites
+- Processing 3.x.x
+- The Processing VSCode extension if you're coding this in VSCode.
+- The sound library (open Processing, go to tools > include library > add library, search "sound", install the one by "Processing foundation", and install it.)
+- You'll also need some basic data folders and the engine folder, but im gonna make a seperate python script for that later if u want em just message me or smthing idk my discord is Neonn#2222.
 
-The only file you DO want to bother with is `sketchpad.pde`, not to be confused with `Sketchiepad.pde`. This is where you'll see all your code. And you'll be greeted with a friendly boilerplate with the following:
+## Getting started.
+Every one of those files you see, `console.pde`, `sketchiepad.pde`, `engine.pde` can be safely ignored. Unless you want to do some cool advanced trick or something, they're not really worth bothering with.
+
+The only file you DO want to bother with is `sketchpad.pde`, not to be confused with `sketchiepad.pde`. This is where you'll see all your code. And you'll be greeted with a friendly boilerplate with the following:
 - Settings
 - imgAttributes
 - ready()

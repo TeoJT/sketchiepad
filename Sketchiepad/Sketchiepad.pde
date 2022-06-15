@@ -92,6 +92,6 @@ void draw() {
   }
   resetShader();
   sketchie.engine();
-  //if (record)
-    //saveFrame("C:/My Data/Frames/######.tiff");
+  globalKeyPressed = false;
+  globalEnter = false;
 }

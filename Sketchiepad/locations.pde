@@ -4,6 +4,7 @@ String PATH_SHADER               = sketchPath()+"/data/shaders/";
 String PATH_SPRITES_ATTRIB       = sketchPath()+"/data/sprites/";
 String FRAMES_FOLDER_DIR         = sketchPath()+"/data/frames/";
 String PATH_DEFAULTIMG           = sketchPath()+"/data/engine/defaultimg/";
+String PATH_KEYFRAMES            = sketchPath()+"/data/keyframes/";
 
 
 String PATH_MISSING_ICO               = sketchPath()+"/data/engine/icos/missing.png";

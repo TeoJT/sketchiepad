@@ -187,4 +187,43 @@
   boolean doubleBeat() {
     return sketchie.doubleBeat();
   }
+
+  void loadKeyframes(String file) {
+    sketchie.loadKeyframesFrom(PATH_KEYFRAMES+file);
+  }
   
+
+  String globalKeyboardMessage = "";
+  boolean globalKeyPressed = false;
+  boolean globalEnter = false;
+  void keyPressed() {
+    globalKeyPressed = true;
+    if (key == CODED) {
+      switch (keyCode) {
+        case BACKSPACE:
+          if (globalKeyboardMessage.length() > 0) {
+            globalKeyboardMessage = globalKeyboardMessage.substring(0, globalKeyboardMessage.length()-1);
+          }
+        break;
+        case ENTER:
+          globalEnter = true;
+        break;
+      }
+    }
+    else if (key == '\n') {
+      globalEnter = true;
+    }
+    else if (key == 8) {    //Backspace
+      if (globalKeyboardMessage.length() > 0) {
+        globalKeyboardMessage = globalKeyboardMessage.substring(0, globalKeyboardMessage.length()-1);
+      }
+    }
+    else {
+      //log(str(int(key)));
+      globalKeyboardMessage += key;
+    }
+  }
+
+  boolean keyframe(String name) {
+    return sketchie.keyframe(name);
+  }

@@ -117,8 +117,8 @@ public void draw() {
   }
   resetShader();
   sketchie.engine();
-  //if (record)
-    //saveFrame("C:/My Data/Frames/######.tiff");
+  globalKeyPressed = false;
+  globalEnter = false;
 }
 class Beat {
   private float bpm = 120;
@@ -500,6 +500,14 @@ class Console {
       this.consolePrint(message, color(127));
     }
   }
+  public void infoOnce(Object message) {
+    if (this.timeout == 0) {
+      if (this.debugInfo) {
+        this.consolePrint(message, color(127));
+      }
+    }
+    this.timeout = messageDelay;
+  }
   
   public void logOnce(Object message) {
     if (this.timeout == 0) {
@@ -640,7 +648,7 @@ class SketchieEngine {
   
   private void ready() {
     this.console = new Console();
-    this.keyframeWindow = new KeyframeWindow();
+    this.keyframeWindow = new KeyframeWindow(this.console);
     draw.setConsole(console);
     unusedSprite = new Sprite("UNUSED", draw);
     spriteNames = new HashMap<String, Integer>();
@@ -649,19 +657,18 @@ class SketchieEngine {
     selectedSprites = new Stack<Sprite>();
     generalClick = new Click();
     draw.loadAllShaders();
-
-    //test 
-    keyframeWindow.newKeyframe(0);
-    keyframeWindow.newKeyframe(80);
-    keyframeWindow.newKeyframe(100);
-    keyframeWindow.newKeyframe(150);
-    keyframeWindow.newKeyframe(200);
-    keyframeWindow.newKeyframe(300);
-    keyframeWindow.newKeyframe(310);
   }
   
   private String cutChar(String str, int index) {
     return str.substring(0, index) + str.substring(index+1);
+  }
+
+  public void loadKeyframesFrom(String path) {
+    keyframeWindow = new KeyframeWindow(this.console, path);
+  }
+
+  public boolean keyframe(String name) {
+    return keyframeWindow.keyframe(name);
   }
   
   private void syncMusic() {
@@ -771,6 +778,7 @@ class SketchieEngine {
   private boolean showKeyframes = false;
   
   private boolean keyPressAllowed = true;
+  String lastKeyframeName = "";
   private void keyPress() {
     if (this.displayUI && keyPressAllowed) {
       if (keyPressed && !buttonDown) {
@@ -798,8 +806,28 @@ class SketchieEngine {
           draw.changeFramecount(-1);
         }
         if (key == 'e') {
-        }             
+
+        }          
         if (key == 't') {
+          
+        }
+        if (key == 'a') {
+          keyPressAllowed = false;
+          globalKeyboardMessage = "";
+          if (playing()) {
+            pause();
+          }
+          keyframeWindow.keyframePrompt();
+        }
+        if (key == 's') {
+          if (lastKeyframeName.length() == 0) {
+            console.log("No keyframe was created.");
+          }
+          else {
+            //Create a new keyframe with the same name as the last keyframe created.
+            keyframeWindow.saveKeyframe(keyframeWindow.newKeyframe(draw.framecount, lastKeyframeName)); 
+            log("Keyframe "+lastKeyframeName+" created.");
+          }
           
         }
         if (key == ' ') {
@@ -916,7 +944,7 @@ class SketchieEngine {
   }
   
   private void renderSprite(Sprite s) {
-    if (s.equals(selectedSprite) || (keyPressed && key == 'r')) {
+    if (s.equals(selectedSprite) || (keyPressed && key == 'r' && keyPressAllowed)) {
       draw.showWireframe();
       String txt = s.getName() + "   x:" + str((int)s.getX()) + " y:" + str((int)s.getY());
       draw.txt(txt, s.getX()*draw.getScaleX()*1.f, s.getY()*draw.getScaleY() - 5.f, 12.f);
@@ -1132,13 +1160,21 @@ class SketchieEngine {
     this.generalClick.update();
     this.runSpriteInteraction();
     console.display(this.displayUI);
+    if (!this.displayUI) {
+      this.keyframeWindow.hideKeyframeWindow();
+    }
     this.keyframeWindow.run(draw.framecount);
+    if (keyframeWindow.promptIsComplete()) {
+      this.keyPressAllowed = true;
+      console.log(globalKeyboardMessage);
+      lastKeyframeName = globalKeyboardMessage;
+    }
     if (console.basicui.displayingWindow()) {
       console.basicui.display();
       playing = false;
       if (music != null)
         music.mute();
-      if (keyPressed && key == 'x') {
+      if (keyPressed && key == 'x' && keyPressAllowed) {
         console.basicui.stopDisplayingWindow();
         playing = true;
         if (music != null)
@@ -1153,13 +1189,49 @@ class SketchieEngine {
 class KeyframeWindow {
     boolean interactable = true;
     boolean visible = false;
+    boolean promptActive = false;
+    boolean promptComplete = true;
     Keyframe currentKeyframe;
     Keyframe startKeyframe = null;
     final float wi = 100.f;
     Console console;
+    int sentThing = 0;
+    JSONArray keyframeJSON;
+    final String DEFAULT_KEYFRAMES = PATH_KEYFRAMES+"keyframes.json";
+    String keyframesPath = "";
+    Stack<String> triggeredKeyframes;
+
+    float typeVel = 0.0f;
+
+    {
+        triggeredKeyframes = new Stack<String>(20); //We'll go for a max of 20 for now.
+    }
 
     public KeyframeWindow(Console c) {
         this.console = c;
+        loadAllKeyframes(DEFAULT_KEYFRAMES);
+        keyframesPath = DEFAULT_KEYFRAMES;
+    }
+
+    public KeyframeWindow(Console c, String path) {
+        this.console = c;
+        loadAllKeyframes(path);
+        keyframesPath = path;
+    }
+
+    public void loadAllKeyframes(String path) {
+        File f = new File(path);
+        if (!f.exists()) {
+            keyframeJSON = new JSONArray();
+            return;
+        }
+        JSONObject json = loadJSONObject(path);
+        keyframeJSON = json.getJSONArray("keyframes");
+        for (int i = 0; i < keyframeJSON.size(); i++) {
+            JSONObject k = keyframeJSON.getJSONObject(i); 
+
+            newKeyframe(k.getInt("frame"), k.getString("name"));
+        }
     }
 
     public void showKeyframeWindow() {
@@ -1174,18 +1246,95 @@ class KeyframeWindow {
         visible = !visible;
     }
 
+    public void keyframePrompt() {
+        promptActive = true;
+        visible = true;
+    }
+
+    public boolean promptIsActive() {
+        return this.promptActive;
+    }
+
+    public boolean promptIsComplete() {
+        return this.promptComplete;
+    }
+
+    public void saveKeyframe(Keyframe k) {
+        JSONObject p = new JSONObject();
+
+        p.setInt("frame", k.getFrame());
+        p.setString("name", k.getName());
+
+        keyframeJSON.setJSONObject(keyframeJSON.size(), p);
+
+        JSONObject json = new JSONObject();
+        json.setJSONArray("keyframes", keyframeJSON);
+        saveJSONObject(json, keyframesPath);
+    }
+
+    public boolean keyframe(String name) {
+        int i = 0;
+        while (true) {
+            try {
+                if (triggeredKeyframes.peek(i++).equals(name)) {
+                    return true;
+                }
+            }
+            catch (StackException e) {
+                return false;
+            }
+        }
+    }
+
     public void run(int frame) {
         Keyframe k = startKeyframe;
         float fpxl = (width/this.wi);
+        this.promptComplete = false;
+        triggeredKeyframes.empty();
+        float fadeinfadeout = sin(frameCount*0.1f)*127+127;
         if (visible) {
-            stroke(sin(frameCount*0.1f)*127+127);
+            stroke(fadeinfadeout);
             strokeWeight(1);
             line(width/2, 0, width/2, height);
+
+            if (promptActive) {
+                if (globalKeyPressed) {
+                    typeVel += 0.5f;
+                }
+                if (globalEnter) {
+                    this.promptComplete = true;
+                    this.promptActive   = false;
+                    saveKeyframe(newKeyframe(frame, globalKeyboardMessage));
+                    console.log("New keyframe "+globalKeyboardMessage+" added.");
+                }
+
+                noStroke();
+                fill(0, 100);
+                float b = 20*typeVel;
+                float w = 300, h = 100;
+                float x = b*sin(frameCount), y = b*cos(frameCount);
+                rect(width/2-w+x, height/2-h+y, w*2, h*2);
+                fill(255);
+                textAlign(CENTER, CENTER);
+                textSize(20);
+                text("Enter keyframe name:", width/2+x, height/2-h+20+y);
+                textSize(42);
+                text(globalKeyboardMessage, width/2+x, height/2+y);
+
+                typeVel *= 0.90f;
+            }
         }
         while (k != null) {
-
+            
+            //Keyframe is triggered.
             if (frame == k.getFrame()) {
                 fill(color(255, 255, 255, 200));
+                triggeredKeyframes.push(k.getName());
+
+                if (sentThing != frame) {
+                    this.console.info("Keyframe "+k.getName()+" triggered.");
+                    sentThing = frame;
+                }
             }
             else {
                 fill(color(0, 255, 0, 200));
@@ -1197,9 +1346,15 @@ class KeyframeWindow {
 
                 float p = pos-10;
                 float w = 20;
+                float h = height/2;
                 
                 noStroke();
-                rect(p, height/2, w, w);
+                rect(p, h, w, w);
+                fill(fadeinfadeout);
+                textAlign(CENTER, CENTER);
+                textSize(26);
+                text(k.getName(), pos, h-20);
+
 
             }
             
@@ -1208,15 +1363,16 @@ class KeyframeWindow {
         }
     }
 
-    public void newKeyframe(int f) {
-        Keyframe k = new Keyframe(f);
+    public Keyframe newKeyframe(int f, String n) {
+        Keyframe k = new Keyframe(f, n);
         if (startKeyframe == null) {
             currentKeyframe = k;
             startKeyframe   = k;
-            return;
+            return k;
         }
         currentKeyframe.append(k);
         currentKeyframe = k;
+        return k;
     }
 
 
@@ -1225,9 +1381,11 @@ class KeyframeWindow {
 class Keyframe {
     private int frame = 0;
     private Keyframe nextKeyframe;
+    String name = "";
 
 
-    public Keyframe(int frame) {
+    public Keyframe(int frame, String n) {
+        this.name = n;
         this.frame = frame;
     }
 
@@ -1243,6 +1401,10 @@ class Keyframe {
         return frame;
     }
 
+    public String getName() {
+        return this.name;
+    }
+
 }
 
 String PATH_CACHE                = sketchPath()+"/data/engine/cache/";
@@ -1251,6 +1413,7 @@ String PATH_SHADER               = sketchPath()+"/data/shaders/";
 String PATH_SPRITES_ATTRIB       = sketchPath()+"/data/sprites/";
 String FRAMES_FOLDER_DIR         = sketchPath()+"/data/frames/";
 String PATH_DEFAULTIMG           = sketchPath()+"/data/engine/defaultimg/";
+String PATH_KEYFRAMES            = sketchPath()+"/data/keyframes/";
 
 
 String PATH_MISSING_ICO               = sketchPath()+"/data/engine/icos/missing.png";
@@ -2331,8 +2494,14 @@ public void looper() {
     img("cloud", 1000-PApplet.parseInt(  (t-floor(t))*2000.f  ), PApplet.parseInt(  height-400 ), PApplet.parseInt( size*500*noise(ii) ), PApplet.parseInt( size*300*noise(ii) ) );
   }
 
-  dis.fill(color(255,0,0));
-  dis.rect(20, 20, 100, 100);
+
+  if (keyframe("x")) {
+    sketchie.draw.pump(100);
+    dis.fill(color(255,0,0));
+    dis.rect(20, 20, 100, 100);
+  }
+  
+  sketchie.draw.bootsAndCats();
   
   if (framecount > 300) {
     //exit();
@@ -3327,7 +3496,46 @@ class QuadVertices {
   public boolean doubleBeat() {
     return sketchie.doubleBeat();
   }
+
+  public void loadKeyframes(String file) {
+    sketchie.loadKeyframesFrom(PATH_KEYFRAMES+file);
+  }
   
+
+  String globalKeyboardMessage = "";
+  boolean globalKeyPressed = false;
+  boolean globalEnter = false;
+  public void keyPressed() {
+    globalKeyPressed = true;
+    if (key == CODED) {
+      switch (keyCode) {
+        case BACKSPACE:
+          if (globalKeyboardMessage.length() > 0) {
+            globalKeyboardMessage = globalKeyboardMessage.substring(0, globalKeyboardMessage.length()-1);
+          }
+        break;
+        case ENTER:
+          globalEnter = true;
+        break;
+      }
+    }
+    else if (key == '\n') {
+      globalEnter = true;
+    }
+    else if (key == 8) {    //Backspace
+      if (globalKeyboardMessage.length() > 0) {
+        globalKeyboardMessage = globalKeyboardMessage.substring(0, globalKeyboardMessage.length()-1);
+      }
+    }
+    else {
+      //log(str(int(key)));
+      globalKeyboardMessage += key;
+    }
+  }
+
+  public boolean keyframe(String name) {
+    return sketchie.keyframe(name);
+  }
   static public void main(String[] passedArgs) {
     String[] appletArgs = new String[] { "Sketchiepad" };
     if (passedArgs != null) {

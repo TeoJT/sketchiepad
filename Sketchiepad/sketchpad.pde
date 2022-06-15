@@ -64,8 +64,14 @@ void looper() {
     img("cloud", 1000-int(  (t-floor(t))*2000.  ), int(  height-400 ), int( size*500*noise(ii) ), int( size*300*noise(ii) ) );
   }
 
-  dis.fill(color(255,0,0));
-  dis.rect(20, 20, 100, 100);
+
+  if (keyframe("x")) {
+    sketchie.draw.pump(100);
+    dis.fill(color(255,0,0));
+    dis.rect(20, 20, 100, 100);
+  }
+  
+  sketchie.draw.bootsAndCats();
   
   if (framecount > 300) {
     //exit();

@@ -2432,7 +2432,7 @@ public class SketchImage {
 //*****************SETTINGS******************
 int frameWidth = 1024, frameHeight = 1024;
 int     framerate              = 60;
-int   clearColor             = color(0);
+int   clearColor             = color(255);
 float   renderScale            = 1.0f;
 int     interval               = 1;
 boolean rec                    = false;
@@ -2443,71 +2443,17 @@ boolean extraDebugInfo         = true;
 //*******************************************
 //************IMAGE ATTRIBUTES***************
 String imgAttributes[] = {
+
 };
 //*******************************************
 //*************SETUP CODE HERE***************
 public void ready() {
-  playMusic("music.wav", 107.96f, 0.5f);
+  //playMusic("music.wav", 120, 0.5);
 }
 //*******************************************
 //*************LOOP CODE HERE****************
-int blinkk = 0;
 public void looper() {
-  back("sunset");
-  float f = (framecount/60.f)*2.f+HALF_PI;
   
-  
-  for (int i = 1; i < 30; i++) {
-    float ii = PApplet.parseFloat(i);
-    float t = f*0.2f + noise(ii)*15.f;
-    float size = 2.f;
-    img("cloud", 1000-PApplet.parseInt(  (t-floor(t))*2000.f  ), PApplet.parseInt(  height-500 ), PApplet.parseInt( size*500*noise(ii) ), PApplet.parseInt( size*300*noise(ii) ) );
-  }
-  
-  boolean glo = false;
-
-
-  int ne = floor(framecount/10)%3 + 1;
-  String nee = "n"+str(ne);
-  if (floor(framecount/10)%12 + 1 == 12) {
-    nee = "n"+str(ne)+"_blinkk";
-  }
-  sprite("neeeeeeee", nee);
-  sprite("anchor");
-  if (glo) sprite("glow", "back");
-  sprite("overlay", "sky");
-  if (glo) sketchie.draw.getShaderByName("starboard_glow").set("off", (float)sketchie.getSprite("glow").getX(), (float)sketchie.getSprite("glow").getY());
-  sketchie.draw.getShaderByName("starboard_overlay").set("off", (float)sketchie.getSprite("overlay").getX(), (float)sketchie.getSprite("overlay").getY());
-  autoSetShader("back", "starboard_glow");
-  autoSetShader("sky", "starboard_overlay");
-  if (glo) move("glow", 0, sin(f)*50);
-  move("overlay", 0, sin(f)*50);
-  move("neeeeeeee", 0, sin(f)*50);
-  move("anchor", 0, sin(f)*50 - 50);
-  //sprite("782384", "dougg");
-  //sprite("7384", "shirt");
-  
-  for (int i = 1; i < 20; i++) {
-    float ii = PApplet.parseFloat(i);
-    float t = f*0.2f + noise(ii)*15.f;
-    float size = 4.f;
-    img("cloud", 1000-PApplet.parseInt(  (t-floor(t))*2000.f  ), PApplet.parseInt(  height-400 ), PApplet.parseInt( size*500*noise(ii) ), PApplet.parseInt( size*300*noise(ii) ) );
-  }
-
-
-  if (keyframe("x")) {
-    sketchie.draw.pump(100);
-    dis.fill(color(255,0,0));
-    dis.rect(20, 20, 100, 100);
-  }
-  
-  sketchie.draw.bootsAndCats();
-  
-  if (framecount > 300) {
-    //exit();
-  }
-  
-  sprite("sigblack");
 }
 //*******************************************k
 enum Transform {

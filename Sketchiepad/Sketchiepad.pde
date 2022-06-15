@@ -77,6 +77,7 @@ void draw() {
   }
   else if (frameCount > 2 && doneLoading) {
     doneLoading = false;
+    sketchie.draw.setFramecount(0);
   }
   else if (frameCount > 2) {
     dis.beginDraw();

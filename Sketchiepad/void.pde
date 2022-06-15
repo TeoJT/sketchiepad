@@ -188,6 +188,10 @@
     return sketchie.doubleBeat();
   }
 
+  boolean step() {
+    return sketchie.step();
+  }
+
   void loadKeyframes(String file) {
     sketchie.loadKeyframesFrom(PATH_KEYFRAMES+file);
   }

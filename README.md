@@ -1,6 +1,6 @@
 # Sketchiepad
-## What is Sketchiepad??
-Sketchiepad is a piece of s--- that allows you to code animations thanks to the amazing Processing 3 rendering engine. It essentially simplifies the process of rendering bitmaps to a canvas and recording them as frames, complete with background sound/music and tools to make it easier to make your scene pretty without having to reposition everything by entering numbers repeatedly until it's in the right place.
+## What is Sketchiepad?
+Sketchiepad is a rudimentary tool that allows you to code animations thanks to the amazing Processing 3 rendering engine. It essentially simplifies the process of rendering bitmaps to a canvas and recording them as frames, complete with background sound/music and tools to make it easier to make your scene pretty without having to reposition everything by entering numbers repeatedly until it's in the right place.
 
 ## Features
 - Automatically load images, sounds, and shaders from their respective folders inside of `data`, so you don't need to worry about loading them in the setup() statement
@@ -25,7 +25,7 @@ Sketchiepad is a piece of s--- that allows you to code animations thanks to the 
 - Minify image attribute. Automatically removes blank transparent space around an image so that its width and height is flush against the actual image without gaps.
 - Many adjustable and easy-to-edit attributes in sketchpad such as frameWidth, frameHeight, framerate, interval, record on/off, exit when music ends on/off, etc.
 - Internal console within the animation display that shows exactly what sketchiepad is doing, as well as warning such as accessing a file that does not exist.
-- Prolly loads more little trinkets that I forgot to add here.
+- Probably loads more little trinkets that I forgot to add here.
 
 # Documentation
 Note: documentation is very much incomplete, but I'll try my best.
@@ -68,7 +68,7 @@ Here you can load all of your assets into the appropriate file folders, and they
 Now, back to `sketchpad.pde`.
 
 - Settings
-Used to specify the properties of your project. They're pretty self-explainatory, but word of warning(s), make sure `rec` is set to false while you make your project, otherwise Sketchiepad will write frames to your disk and render the video in full quality, which will render your project very slowly.
+Used to specify the properties of your project. They're pretty self-explainatory, but word of warning, make sure `rec` is set to false while you make your project, otherwise Sketchiepad will write frames to your disk and render the video in full quality, which will render your project very slowly.
 Also keep clear of `renderScale` and `interval` as they're not implemented properly and could make your project bug out.
 
 - imgAttributes
@@ -88,7 +88,7 @@ Inside your looper statement, this is where you use the syntax that you see in `
 
 When you start up sketchiepad, you will (hopefully) find your image displayed on the screen, just like that. If you click and drag on the image, you will find you can reposition it. If you click the little square at the bottom-right corner, you can drag and resize the image.
 
-That about it for getting started cus honestly i'm not sure anybody's gonna be using this. Maybe i might update this later idk.
+This part is WIP, need to add more info later.
 
 ## Reference.
 ### Keys
@@ -111,4 +111,4 @@ That about it for getting started cus honestly i'm not sure anybody's gonna be u
 ### sketchpad syntax
 - `framecount`       The current frame from the start of the animation.
 - `dis`              Instance of the canvas from sketchie.draw.display. Use it to draw anything!
-- Can't be bothered with the rest.
+WIP, need to add more reference later.
